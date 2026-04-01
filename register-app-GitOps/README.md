@@ -203,7 +203,8 @@ telnet 192.34.1.5 8080
 ```
 
 
-Step 10: write the jemkins pipeline
+Step 10: write the jenkins pipeline
+
 Lets understand how can we write pipeline effectively in jenkins and understand details-
 pipeline {
     agent any
@@ -262,6 +263,84 @@ Post-build actions run
      ↓
 Workspace stays on disk (until cleaned)
 ```
+
+create a jenkins file and store..its already stored in https://github.com/diptikanta1234/register-app.git
+create these stages by goint to pipeline syntax
+
+once done create a CI pipeline name as 'register-app-ci' -
+- definition - pipeline script from scm
+- scm - git
+- repositories - give the repo url and add credentials
+- branch - give the branch name or main
+- repo browser - auto
+- jenkins path - jenkinsfile ( makesure u have kept under repo)
+- apply & save
+
+step 11:- setup sonarqube
+create a ec2 instance with name sonarQube -> ubuntu with t3.medium -> 
+connect to the ec2 and install postgresql n sonarqube.
+allow 9000 in SG..once everything is done reboot the ec2 once.
+add a user sonar and group as sonar..give the perssion
+
+https://www.youtube.com/watch?v=e42hIYkvxoQ&t=7821s
+
+refer the video from 00:45 onwards to check the installation of sonarqube server, once done then access it via <publicIp>:9000
+now integrate sonarQube with jenkins-
+username/password - admin
+
+generate a token in sonar qube.  
+<img width="559" height="299" alt="image" src="https://github.com/user-attachments/assets/2784a73e-e64a-4842-b7ec-efb23e40e452" />
+
+user the sonarqube generated token in jenkins -
+- manage jenkins
+- credentials
+- add new credentials
+- kind select as 'secret text'
+- in secret pate the 'generated token context'
+- id/description - give a name as 'jenkins-sonarqube-token'
+- then create it
+
+<img width="640" height="218" alt="image" src="https://github.com/user-attachments/assets/663b6366-1c37-46cf-9efd-6ebd83da6824" />
+
+now install sonarqube plugins -> configure 'sonarqube server' and 'sonarqube scanner' -
+- sonarqube scanner plugins
+- sonar quality gates
+- quality gates
+- then istall those
+- click restart checkbox to restart the jenkins server once the installation is done
+
+for 'sonarqube server' - 
+go to manage jenkins -> system -> sonarqube installation -> add sonarQube 
+ - name - give a name as sonaqube-server ( use the same name in pipeline)
+ - server url - http://<privateIp>:9000 //if the ec2 present in same vpc
+ - server authentication token - 'jenkins-sonarQube-token' ( selet the token that was created by us in jenkins by using the token of sonarqube to connect sonarQube API/tool)
+ - apply & save
+
+for 'sonarqube scanner' -
+go to manage jenkins -> global tool configuration -> sonarqube scanner installarion ->
+- add sonarqube scanner
+- install automatcally ( it will take the latest version of sonarqube scanner )
+- apply n save
+
+<img width="661" height="285" alt="image" src="https://github.com/user-attachments/assets/98f9d69e-1032-4d9d-9c00-f9208cd3d85c" />
+
+while writing stages for 'sonarqube' get the code using pipeline synax -
+ stage("SonarQube Analysis"){
+           steps {
+	           script {
+		        withSonarQubeEnv(credentialsId: 'jenkins-sonarqube-token') { 
+                        sh "mvn sonar:sonar"
+		        }
+	           }	
+           }
+       }
+
+add the above stage to jenkins file then run build-
+
+<img width="707" height="339" alt="image" src="https://github.com/user-attachments/assets/9aadf77a-5368-42f5-9055-e920d079b45f" />
+
+check the build that got generated from sonarQube-
+
 
 
 
