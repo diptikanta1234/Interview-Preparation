@@ -203,7 +203,66 @@ telnet 192.34.1.5 8080
 ```
 
 
-        
+Step 10: write the jemkins pipeline
+Lets understand how can we write pipeline effectively in jenkins and understand details-
+pipeline {
+    agent any
+    stages {
+        stage('Hello') {
+            steps {
+                echo 'Hello, World!'
+            }
+        }
+    }
+}
+
+agent any -> Tells Jenkins **where to run** this pipeline. `any` means "use whatever agent/node is available" — could be the master node or any connected worker. You could also specify `agent { label 'linux' }` to target a specific machine.
+
+Injenkins whenever you are
+
+NOTE:-
+Workspace - workspace is the directory in agent/node where git check out (stotes) the source code, runs build command, stores artifacts and rus the pipeline for specific job. workspace is basically a 'working folder' for a job run.
+
+when the we are running a pipeline, if its fetching the code from SCM/git, its mandatory to keep a local copy in jenkins/nodes/agents in workspace.
+
+the default path in jenkins is var/lib/jenkins/workspace/job-name
+
+**Key point:** Each agent creates its own isolated workspace directory. They do NOT share a filesystem automatically.
+
+The Critical Problem This Creates in Production
+
+Since Agent-1 and Agent-2 have **separate workspaces**, the `target/app.jar` built on Agent-1 is **NOT automatically available** on Agent-2.
+You must explicitly transfer artifacts using one of these strategies:
+```
+Strategy 1 — stash/unstash (shown above)
+  Agent-1 builds → stash to Jenkins master → Agent-2 unstash
+
+Strategy 2 — Shared NFS/Network Mount
+  Both agents mount the same network path as workspace
+
+Strategy 3 — Artifact Repository (Production Best Practice)
+  Agent-1 → publish to Nexus/Artifactory → Agent-2 pulls from it
+
+Strategy 4 — Docker Registry
+  Agent-1 builds image → pushes to ECR/DockerHub → Agent-2 pulls & deploys
+```
+### Workspace Lifecycle in Production
+```
+Job Triggered
+     ↓
+Agent Allocated
+     ↓
+Workspace Created (or reused if exists)
+     ↓
+SCM Checkout (git clone / pull into workspace)
+     ↓
+Steps Execute inside workspace
+     ↓
+Post-build actions run
+     ↓
+Workspace stays on disk (until cleaned)
+```
+
 
 
 
