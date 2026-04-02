@@ -334,12 +334,167 @@ while writing stages for 'sonarqube' get the code using pipeline synax -
 	           }	
            }
        }
+how it works ->
+sh "mvn sonar:sonar"
 
+Executes the SonarQube Maven plugin goal.
+Maven reads sonar-project.properties or pom.xml for project metadata (project key, name, version).
+It compiles, analyzes the source code and sends the report to SonarQube server — covering:
+
+Code smells, bugs, vulnerabilities
+Code coverage (if Jacoco/Surefire reports exist)
+Duplications, complexity metrics
+
+
+At the end, SonarQube returns a task ID (stored as .scannerwork/report-task.txt) which Jenkins uses in the next stage.
+
+stage("Quality Gate"){
+    steps {
+        script {
+            waitForQualityGate abortPipeline: false, credentialsId: 'jenkins-sonarqube-token'
+        }	
+    }
+}
+```
+
+**`waitForQualityGate`** is a blocking step that **polls SonarQube** for the analysis result.
+
+**How it works internally:**
+```
+Jenkins  ──── polls ────►  SonarQube API
+                           /api/qualitygates/project_status?analysisId=<id>
+         ◄─── returns ───  { "status": "OK" | "ERROR" | "WARN" }
+```
+
+- Jenkins reads the **task ID** generated in Stage 1 from the workspace.
+- It repeatedly hits the SonarQube webhook/API until the background analysis is **complete**.
+- For this to work reliably, you should configure a **SonarQube Webhook** pointing back to Jenkins:
+```
+  SonarQube → Administration → Webhooks → Create
+  URL: http://<jenkins-url>/sonarqube-webhook/
+```
+
+**`abortPipeline: false`**
+
+This is the critical flag controlling behavior on Quality Gate failure:
+
+| Value | Behavior |
+|---|---|
+| `abortPipeline: true` | Pipeline **fails & aborts** if Quality Gate is ERROR |
+| `abortPipeline: false` | Pipeline **continues** even if Quality Gate fails — result is marked UNSTABLE |
+
+In production pipelines, you'd typically set this to `true` to enforce standards.
+```
 add the above stage to jenkins file then run build-
 
 <img width="707" height="339" alt="image" src="https://github.com/user-attachments/assets/9aadf77a-5368-42f5-9055-e920d079b45f" />
 
 check the build that got generated from sonarQube-
+
+step 11: configure docker with jenkins
+install plugins -
+- docker
+- docker pipeline
+
+now setup credentials of docker hub with jenkins to push/pull -
+manage jenkins -> credentials -> add credentials 
+- kind - username and password
+- username - uname of dockerhub
+- password - enter the token generated in dockerhub ( login to dockerhub - a/c setting - security - new token )
+- id/description - dockerhub ( use same name in ci/cd)
+
+now add the pipeline script for docker build n push, trivy scan, cleaning work space. also add some environmental variables.
+
+step 12: create a EKS bootstrap server 
+create a ec2 instance as 'eks-bootstrap-server' - ubuntu - t3.micro - 8gb ebs - launch it
+install aws cli
+install kubectl
+install eksctl
+
+create a iam role -> select service ec2 -> add administrative permission -> give role name ' eksctl-role'. then modify and apply iam role by selecting the ec2 instance.
+
+create the eks cluster using eksctl command from boot stap server.
+<img width="359" height="41" alt="image" src="https://github.com/user-attachments/assets/e182d589-9fe9-43bd-9758-dc8bccaf9960" />
+kubectl get nodes
+
+step 13 - configure argocd
+in the same boot stap server, create a namespace as 'argocd' and install argocd -
+<img width="592" height="100" alt="image" src="https://github.com/user-attachments/assets/dc93ce68-32aa-4928-a232-ca207bca944e" />
+
+kubectl get pods -n argocd
+
+to interact with api server , from argocd we need to install argocd cli. give it executable pemission.
+now expose the argocd UI to external world through ALB.
+
+<img width="836" height="350" alt="{82E54F25-F031-430D-A601-94CC0B58AC78}" src="https://github.com/user-attachments/assets/fc5bc43f-f8f4-4f7c-80bb-910ac7c727fd" />
+curl --silent --location -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.4.7/argocd-linux-amd64
+
+chmod +x /usr/local/bin/argocd
+
+kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}'
+
+kubectl get svc -n argocd
+
+get the password of argocd and decode it -
+kubectl get secret argocd-initial-admin-secret -n argocd -o yaml
+
+echo U2Q2ZXFyN0dWazlUb3drTQ== | base64 --decode
+
+access argocd ui throug LB and give username as admin and password that is  decoded.
+change the password in aargocd.
+
+now we need to pull the eks cluster info to argocd. for that login argocd from bootstrap server-
+argocd login a661d50fa978944729aaa0788b166e52-1337611090.ap-south-1.elb.amazonaws.com --username admin
+
+argocd cluster list
+
+kubectl config get-contexts
+
+argocd cluster add i-08b83e50d15eca49a@virtualtechbox-cluster.ap-south-1.eksctl.io --name virtualtechbox-eks-cluster
+
+argocd cluster list
+```
+
+---
+
+**Output & Explanation:**
+
+**1st `argocd cluster list`** — Shows only the default in-cluster:
+```
+SERVER                       NAME        VERSION  STATUS   MESSAGE
+https://kubernetes.default.svc  in-cluster           Unknown  Cluster has no applications and is not being monitored.
+```
+
+**`kubectl config get-contexts`** — Lists available kubeconfig contexts:
+```
+CURRENT   NAME                                                          CLUSTER                                              AUTHINFO
+*         i-08b83e50d15eca49a@virtualtechbox-cluster.ap-south-1.eksctl.io   virtualtechbox-cluster.ap-south-1.eksctl.io   i-08b83e50d15eca49a@virtualtechbox-cluster.ap-south-1.eksctl.io
+```
+
+**`argocd cluster add`** — Registers the EKS cluster with ArgoCD:
+```
+WARNING: This will create a service account `argocd-manager` on the cluster referenced 
+by context `i-08b83e50d15eca49a@virtualtechbox-cluster.ap-south-1.eksctl.io` with full 
+cluster level privileges. Do you want to continue [y/N]? y
+
+INFO[0005] ServiceAccount "argocd-manager" created in namespace "kube-system"
+INFO[0005] ClusterRole "argocd-manager-role" created
+INFO[0005] ClusterRoleBinding "argocd-manager-role-binding" created
+INFO[0010] Created bearer token secret for ServiceAccount "argocd-manager"
+Cluster 'https://F0BB33878900D8F0BEC9A1A260E394C6.gr7.ap-south-1.eks.amazonaws.com' added
+```
+
+**2nd `argocd cluster list`** — Now shows both clusters registered:
+```
+SERVER                                                                         NAME                      VERSION  STATUS   MESSAGE
+https://F0BB33878900D8F0BEC9A1A260E394C6.gr7.ap-south-1.eks.amazonaws.com    virtualtechbox-eks-cluster          Unknown  Cluster has no applications and is not being monitored.
+https://kubernetes.default.svc                                                  in-cluster                          Unknown  Cluster has no applications and is not being monitored.
+
+<img width="840" height="354" alt="{44284A8B-157B-451B-862D-814960400FC8}" src="https://github.com/user-attachments/assets/23287756-b0f4-4480-b3a4-42420c5c56e7" />
+
+now check in argocd - settings - cluster -> 2 clusters shoukd be visible
+
+
 
 
 
