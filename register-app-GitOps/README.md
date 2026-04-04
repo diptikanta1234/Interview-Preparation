@@ -493,6 +493,190 @@ https://kubernetes.default.svc                                                  
 <img width="840" height="354" alt="{44284A8B-157B-451B-862D-814960400FC8}" src="https://github.com/user-attachments/assets/23287756-b0f4-4480-b3a4-42420c5c56e7" />
 
 now check in argocd - settings - cluster -> 2 clusters shoukd be visible
+## Step 13: Configure ArgoCD to Deploy Pod on EKS & Automate CD via GitOps
+
+---
+
+### 13.1 Connect ArgoCD to the GitOps Repository
+
+The deployment manifest lives in a separate repo: **`gitops-register-app`**. Clone it locally first:
+```bash
+git clone <gitops-register-app-repo-url>
+```
+
+> **Screenshot — cloned repo structure:**
+>
+> <img width="621" height="260" alt="gitops-register-app cloned" src="https://github.com/user-attachments/assets/c87022e6-4e55-48c7-890a-3e36cfe8283f" />
+
+---
+
+### 13.2 Connect the Repo in ArgoCD Dashboard
+
+Navigate to:  
+**ArgoCD Dashboard → Settings → Repositories → Connect Repo**
+
+| Field | Value |
+|---|---|
+| Connection method | Via HTTP |
+| Type | Git |
+| Project | default |
+| Repository URL | `<gitops-register-app repo URL>` |
+| Username | GitHub username |
+| Password | GitHub PAT (Personal Access Token) |
+
+Click **Connect** — status should show **Successful**.
+
+> ⚠️ **Important:** The deployment image tag referenced in the GitOps repo **must match** the image present in the remote registry (DockerHub / ECR).
+
+---
+
+### 13.3 Create the ArgoCD Application
+
+Navigate to:  
+**ArgoCD Dashboard → Applications → New App**
+
+| Field | Value |
+|---|---|
+| Name | `register-app` |
+| Project Name | `default` |
+| Sync Policy | Automatic |
+| Prune Resources | ✅ Enabled |
+| Self Heal | ✅ Enabled |
+| Source (Repo) | GitOps GitHub repo URL |
+| Path | `./` |
+| Destination (Cluster URL) | EKS cluster URL |
+| Namespace | `default` (or your target namespace) |
+
+Click **Create / Deploy**.
+
+---
+
+### 13.4 Access the Deployed Application
+
+Once ArgoCD deploys the app, the service is created with **LoadBalancer** type. Retrieve the external endpoint:
+```bash
+kubectl get svc
+```
+
+Access the application at:
+http://<EXTERNAL-IP>:8080/webapp
+
+> **Screenshot — running application:**
+>
+> <img width="1888" height="797" alt="webapp running" src="https://github.com/user-attachments/assets/283d7631-4edf-41a3-8233-16fb7df34aa9" />
+
+---
+
+### 13.5 Create the CD Pipeline Job in Jenkins
+
+Create a new **Pipeline** job named **`gitops-register-app-cd`** with the following configuration:
+
+**General:**
+- Discard old builds → Keep max **2** builds
+- ✅ This project is parameterized → add parameter:
+  - **Name:** `IMAGE_TAG`
+  - **Type:** String
+
+**Build Triggers:**
+- ✅ Trigger builds remotely
+  - Authentication Token: `gitops-token`
+
+**Pipeline Definition:**
+- Definition: **Pipeline script from SCM**
+- SCM: **Git**
+- Repository URL: `<gitops-register-app repo URL>`
+- Credentials: Select your GitHub credential
+- Branch: `main`
+
+Click **Apply & Save**.
+
+---
+
+### 13.6 Add CD Trigger Stage to the CI Pipeline
+
+At the end of the **CI pipeline** (`register-app-ci`), add the following stage to remotely trigger the CD job:
+```groovy
+stage("Trigger CD Pipeline") {
+    steps {
+        script {
+            sh """
+                curl -v -k --user clouduser:${JENKINS_API_TOKEN} \
+                  -X POST \
+                  -H 'cache-control: no-cache' \
+                  -H 'content-type: application/x-www-form-urlencoded' \
+                  --data 'IMAGE_TAG=${IMAGE_TAG}' \
+                  'ec2-13-232-128-192.ap-south-1.compute.amazonaws.com:8080/job/gitops-register-app-cd/buildWithParameters?token=gitops-token'
+            """
+        }
+    }
+}
+```
+
+> - `clouduser` — Jenkins username
+> - `${JENKINS_API_TOKEN}` — Jenkins API token stored as a credential (see below)
+
+---
+
+### 13.7 Create the Jenkins API Token Credential
+
+**Step 1 — Generate the token:**  
+Go to **Jenkins → User `clouduser` → Configure → API Token → Add new Token** → copy the value.
+
+**Step 2 — Store it as a credential:**  
+Go to **Manage Jenkins → Credentials → Add New Credential**:
+
+| Field | Value |
+|---|---|
+| Kind | Secret text |
+| Secret | `<paste the API token>` |
+| ID / Description | `JENKINS_API_TOKEN` |
+
+Click **Create**.
+
+**Step 3 — Expose as an environment variable in the CI pipeline:**  
+In the pipeline's **Environment** section, bind the credential so it is available as `JENKINS_API_TOKEN` in the `Trigger CD Pipeline` stage:
+
+> **Screenshot — environment variable binding:**
+>
+> <img width="475" height="313" alt="Jenkins env var binding" src="https://github.com/user-attachments/assets/81d5c9c1-a803-4f52-ae94-b3b13c63eef7" />
+
+---
+
+### 13.8 Enable Poll SCM on the CI Job
+
+Go to **Manage Jenkins → `register-app-ci` → Configure → Build Triggers → Poll SCM**:
+
+This polls the GitHub repository **every minute** and triggers the pipeline on any new commit.
+
+---
+
+### 13.9 Validate the Full GitOps Flow
+
+1. **Make a code change:**
+```bash
+   # Edit the JSP
+   vi register-app/webapp/src/main/webapp/index.jsp
+   # Add at the end of the file:
+   # <br><h1>Happy Learning.</h1>
+```
+
+2. **Commit and push:**
+```bash
+   git add .
+   git commit -m "Updated index.jsp — added Happy Learning banner"
+   git push origin main
+```
+
+3. **Verify in ArgoCD:**  
+   Go to **ArgoCD UI → App Details** and confirm:
+   - The deployment image tag matches the latest Jenkins build image
+   - The pod is running the updated image
+
+4. **Verify in the browser:**  
+   Reload `http://<EXTERNAL-IP>:8080/webapp` — the **"Happy Learning."** heading should appear.
+
+> Repeat the code-change → push → verify cycle to confirm end-to-end GitOps automation is working correctly.
+
 
 
 
