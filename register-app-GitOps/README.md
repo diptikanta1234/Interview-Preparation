@@ -641,6 +641,25 @@ In the pipeline's **Environment** section, bind the credential so it is availabl
 > <img width="475" height="313" alt="Jenkins env var binding" src="https://github.com/user-attachments/assets/81d5c9c1-a803-4f52-ae94-b3b13c63eef7" />
 
 ---
+here the Jenkins API token authenticates the CI pipeline as a trusted caller so it can remotely trigger the CD pipeline over HTTP — this is the standard way to chain separate Jenkins pipelines securely
+
+CI Pipeline (this job)
+        │
+        │  HTTP POST (curl)
+        │  Auth: clouduser + API token       ← proves WHO is calling
+        │  Job token: gitops-token           ← proves permission to trigger THIS job
+        ▼
+Jenkins Master (ec2-13-232-128-192...)
+        │
+        │  Validates both tokens
+        │  Passes IMAGE_TAG parameter
+        ▼
+CD Pipeline (gitops-register-app-cd)
+        │
+        │  Uses IMAGE_TAG to update
+        │  GitOps repo (deplyment.yaml or values.yaml / image tag)
+        ▼
+ArgoCD detects change → deploys new image
 
 ### 13.8 Enable Poll SCM on the CI Job
 
