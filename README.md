@@ -17,18 +17,18 @@ You can pin a version tag to prevent unexpected changes.
 
 my-shared-library/
 ├── vars/
-│   ├── buildAndPush.groovy      ← callable as buildAndPush(...) in any pipeline
+│   ├── buildAndPush.groovy          ← callable as buildAndPush(...) in any pipeline
 │   ├── deployToK8s.groovy
 │   └── sendSlackNotification.groovy
 │
 ├── src/
 │   └── com/
 │       └── myorg/
-│           └── Utils.groovy     ← reusable Groovy classes (imported in vars/)
+│           └── Utils.groovy         ← reusable Groovy classes (imported in vars/)
 │
 └── resources/
     └── com/myorg/
-        └── deploy-template.yaml ← non-code files (loaded via libraryResource())
+        └── deploy-template.yaml     ← non-code files (loaded via libraryResource())
 
 vars/ — this is the most used folder. Each .groovy file becomes a global pipeline step with the same name. vars/buildAndPush.groovy → call buildAndPush() in any Jenkinsfile.
 src/ — standard Groovy classes. Used for complex logic, utility functions, helper classes. Must follow Java-style package structure.
