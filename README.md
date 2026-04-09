@@ -190,37 +190,37 @@ Q. how can you check if a port is opened and the agent is reachable over a port 
 
 telnet <AGENT_IP> <PORT>
 
-# command 1
+ command 1
 telnet 192.168.1.50 22      # SSH agent
 telnet 192.168.1.50 50000   # JNLP agent port
 telnet 192.168.1.50 8080    # Jenkins master UI
 
-# Success output:
-# Trying 192.168.1.50...
-# Connected to 192.168.1.50.    ← port is OPEN
+ Success output:
+ Trying 192.168.1.50...
+ Connected to 192.168.1.50.    ← port is OPEN
 
-# Failure output:
-# Trying 192.168.1.50...
-# telnet: connect to address 192.168.1.50: Connection refused   ← port CLOSED
-# or just hangs with no response  ← firewall BLOCKING
+ Failure output:
+ Trying 192.168.1.50...
+ telnet: connect to address 192.168.1.50: Connection refused   ← port CLOSED
+ or just hangs with no response  ← firewall BLOCKING
 
-# command 2
+ command 2
 nc (netcat) — fastest, works everywhere
 
 nc -zv <AGENT_IP> <PORT>
-# -z = scan only (don't send data)
-# -v = verbose
+ -z = scan only (don't send data)
+ -v = verbose
 nc -zv 192.168.1.50 22
 
-# command 3
+ command 3
 ss / netstat — check FROM the agent side (is anything listening?)
-# Run ON the agent machine itself
+ Run ON the agent machine itself
 ss -tlnp | grep 50000       # is JNLP port listening?
 ss -tlnp | grep 22          # is SSH listening?
 netstat -tlnp | grep 50000  # older systems
 
-# Output when listening:
-# LISTEN  0  128  0.0.0.0:50000  0.0.0.0:*  users:(("java",pid=1234))
+ Output when listening:
+ LISTEN  0  128  0.0.0.0:50000  0.0.0.0:*  users:(("java",pid=1234))
 
 Q. how can we define parameters in jenkins...what's their use
 
