@@ -138,3 +138,26 @@ docker run -p 5000:5000 vss-flask-app
 ![Build output](https://github.com/user-attachments/assets/e673bda3-496f-4a70-b127-9dcdce615784)
 
 ![Running container](https://github.com/user-attachments/assets/23d0fb48-b207-4ece-a943-b273f79e1b67)
+
+Q. can we delete docker images using imageId ?
+
+Yes we can do but its not recommended to delete images using imageid insted we can delete using image tags one by one.
+
+for many images the imageId can be same as the imageId doesn't change if SHA code is not changed during build.
+
+docker rmi <tag of image>
+
+docker rmi -f <imageId> -> deletes forcefully aal the images with same imageId.
+
+Q. can we delete a image for a running container ?
+
+ docker rmi dipti-img-v2:latest
+Error response from daemon: conflict: unable to remove repository reference "dipti-img-v2:latest" (must force) - container 9dd9f58c362a is using its referenced image a64a85dd15b1
+
+Docker protects you from deleting an image that a container (even a stopped one) depends on. The container must be removed first to release that reference.
+
+force delete the image directly (not recommended)
+bashdocker rmi -f dipti-img-v2:latest
+
+⚠️ Force delete (-f) removes the image tag but the container still exists in a broken state — it loses its image reference. Always prefer stopping and removing the container cleanly first.
+
