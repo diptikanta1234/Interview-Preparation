@@ -1,31 +1,42 @@
-# Terraform Notes n interview questions:-
-========================================
+# Terraform Notes & Interview Questions
 
-terraform init - It initializes the process by downloading provider plugins for cloud provider (Aws)/azure/gcp. initializes the backend (local or remote like in S3), and sets up the .terraform/ directory.
+---
 
-terraform validate	-> Check if any syntax error in configuration.
+## Core Commands
 
-terraform plan	-> Its the dry-run. Preview infrastructure changes
+| Command | Description |
+|---|---|
+| `terraform init` | Downloads provider plugins (AWS/Azure/GCP), initializes backend (local or remote like S3), sets up `.terraform/` directory |
+| `terraform validate` | Checks for syntax errors in configuration |
+| `terraform plan` | Dry-run — previews infrastructure changes |
+| `terraform apply` | Deploys resources |
+| `terraform show` | Displays current state |
+| `terraform destroy` | Deletes infrastructure |
 
-terraform apply ->	Deploy resources
+---
 
-terraform show	-> Display current state
+## Q. How do you manage credentials when creating an EC2 in a QA account using `terraform apply`?
 
-terraform destroy ->	deletes infrastructure
+Go to the account/IAM user → Credentials → Generate secret key → Use CLI → Download the key.
 
-Q.lets say i want to create ec2 in qa account. how do you manage the credential to create ec2 in that account while i apply terraform apply.
+There are **3 preferred ways** to handle this:
 
-the account/IAMuser for which we are creating a resource, go to credentials -> generate the secret key -> use - CLI -> download the key
-There are 3 ways we should prefer doing this -
+---
 
-WAY 1: - in the host/bastion from where you are doing terraform apply, create a '~/.aws/credentials' then set the aws_access_key_id , aws_secret_access_key with profile name. same profile you can use in configuration files to create resource
+### Way 1 — AWS Credentials File (local/bastion host)
 
+On the host where you run `terraform apply`, create `~/.aws/credentials` and set the access key, secret key, and profile name. Use the same profile in your config files.
+
+```ini
 [terraform-user]
 aws_access_key_id     = AKIAIOSFODNN7EXAMPLE
 aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 region                = ap-south-1
+```
 
-provider.tf — points directly at terraform-user's profile, no assume_role needed:
+**`provider.tf`** — points directly at `terraform-user`'s profile, no `assume_role` needed:
+
+```hcl
 terraform {
   required_providers {
     aws = {
@@ -39,18 +50,27 @@ provider "aws" {
   region  = "ap-south-1"
   profile = "terraform-user"
 }
+```
 
-WAY 2:- will help during setting of CI/CD infra pipeline -
+---
 
-Store credentials as encrypted secrets in your CI platform, then inject them as env vars at pipeline runtime. Click your platform: ( GitHub Actions / Jenkins ). we can store these in AWS KMS or vault then use it in environmental variable in pipeline.
+### Way 2 — CI/CD Pipeline Secrets (GitHub Actions / Jenkins)
 
-GitHub → Repo → Settings → Secrets and variables → Actions → New repository secret
-Secret name - AWS_ACCESS_KEY_ID 
-Secret name - AWS_SECRET_ACCESS_KEY
-Secret name - AWS_DEFAULT_REGION
-<img width="928" height="950" alt="image" src="https://github.com/user-attachments/assets/d64ad8de-4113-47f9-9a37-15f60292b1c1" />
+Store credentials as encrypted secrets in your CI platform, then inject them as environment variables at pipeline runtime. You can store these in AWS KMS or Vault, then use them as environment variables in the pipeline.
 
-Then reference them in your workflow file or jenkinsfile :
+**GitHub → Repo → Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret Name | Value |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | your access key |
+| `AWS_SECRET_ACCESS_KEY` | your secret key |
+| `AWS_DEFAULT_REGION` | e.g. `ap-south-1` |
+
+![GitHub Secrets Setup](https://github.com/user-attachments/assets/d64ad8de-4113-47f9-9a37-15f60292b1c1)
+
+Then reference them in your workflow file or Jenkinsfile:
+
+```yaml
 # .github/workflows/terraform.yml
 name: Terraform Apply
 
@@ -68,14 +88,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+```
 
-WAY 3:- through IAM role ( assume_role )
+---
 
-The assume_role pattern is only needed when Terraform runs in account A but needs to create resources in account B (true multi-account). mainly cross-account.
+### Way 3 — IAM Role (`assume_role`) — Cross-Account (Recommended for Production)
 
-This is the proper production pattern. Your principal (developer machine, CI runner, or EC2 instance) has one identity, and Terraform temporarily assumes a role in the Prod account. here the ec2 in CI runner and production infra a/c mostlyare different.
-Step 1 — create a role in the prod account with a trust policy allowing your source account to assume it:
-json{
+The `assume_role` pattern is used when Terraform runs in **account A** but needs to create resources in **account B** (true multi-account setup). Your principal (developer machine, CI runner, or EC2 instance) has one identity, and Terraform temporarily assumes a role in the prod account.
+
+**Step 1** — Create a role in the prod account with a trust policy allowing your source account to assume it:
+
+```json
+{
   "Version": "2012-10-17",
   "Statement": [{
     "Effect": "Allow",
@@ -86,9 +110,12 @@ json{
     }
   }]
 }
-Step 2 — attach the role in provider.tf:
+```
 
-hclprovider "aws" {
+**Step 2** — Attach the role in `provider.tf`:
+
+```hcl
+provider "aws" {
   region = "ap-south-1"
 
   assume_role {
@@ -97,23 +124,34 @@ hclprovider "aws" {
     external_id  = "unique-external-id"
   }
 }
-When you run terraform apply, the AWS SDK calls sts:AssumeRole, gets a temporary set of credentials (valid 1 hour by default), and uses those to provision resources in the prod account. Your source credentials never touch the PROD account directly.
+```
 
-Q. lets say i have created 3 ec2 instance then one s3 bucket. For 2 ec2 intsance all parameter is fine to create, 1 ec2 not having valid ami-id so that it could not created. after that s3 bucket can be created as per configuration. 
-how terraform will behave ? will it create all other resources except 3rd ec2 ?
+When you run `terraform apply`, the AWS SDK calls `sts:AssumeRole`, gets temporary credentials (valid 1 hour by default), and uses those to provision resources in the prod account. Your source credentials never touch the PROD account directly.
 
-Terraform does NOT stop when EC2-3 fails.
-It continues creating other independent resources.
-At the end it shows a partial success summary. the o/p looks as below-
-<img width="934" height="594" alt="image" src="https://github.com/user-attachments/assets/6d00a1d5-3101-4089-a353-147b913ea4fe" />
+---
 
-Q. Have you used modules in one project by importing from other projects. in how many ways the module can be stored remotely and can be imported and used in other project in ur organisation.
+## Q. I created 3 EC2 instances and 1 S3 bucket. EC2-3 has an invalid AMI ID and fails. Will the other resources still be created?
 
-in our organisation we are storing the source code and modules in github-
+**Yes.** Terraform does NOT stop when EC2-3 fails. It continues creating other independent resources and shows a partial success summary at the end.
 
-Supose the ec2 module and vpc module are stored in github in below path. now we are using those in project-a.
+![Partial success output](https://github.com/user-attachments/assets/6d00a1d5-3101-4089-a353-147b913ea4fe)
 
-# project-a/main.tf
+---
+
+## Q. In how many ways can a Terraform module be stored remotely and imported into other projects?
+
+| Source | Example |
+|---|---|
+| GitHub / GitLab / Bitbucket | `github.com/your-org/terraform-modules//ec2?ref=v1.0.0` |
+| S3 Bucket | `s3::https://s3.amazonaws.com/mybucket/modules/ec2.zip` |
+| Terraform Private Registry | Terraform Cloud / Enterprise |
+| Terraform Public Registry | `registry.terraform.io/modules/...` |
+
+![Module sources diagram](https://github.com/user-attachments/assets/a2576188-68ee-4d10-a941-7aa8ac5c6be7)
+
+**Using modules from GitHub in `project-a/main.tf`:**
+
+```hcl
 module "my_ec2" {
   source        = "github.com/your-org/terraform-modules//ec2?ref=v1.0.0"
   instance_type = "t2.micro"
@@ -121,23 +159,21 @@ module "my_ec2" {
 }
 
 module "my_vpc" {
-  source       = "github.com/your-org/terraform-modules//vpc?ref=v1.0.0"
-  cidr_block   = "10.0.0.0/16"
+  source     = "github.com/your-org/terraform-modules//vpc?ref=v1.0.0"
+  cidr_block = "10.0.0.0/16"
 }
+```
 
-Q. Have you used modules in one project by importing from other projects. in how many ways the module can be stored remotely and can be imported and used in other project in ur organisation ?
+---
 
-through github ( using in our currect project) oe gitlab or bitbucket
-through S3
-Terraform Private Registry (Terraform Cloud / Enterprise)
-terraform public registry
+## Q. Explain using a GitHub-hosted EC2 module in detail with code
 
-<img width="751" height="439" alt="image" src="https://github.com/user-attachments/assets/a2576188-68ee-4d10-a941-7aa8ac5c6be7" />
-lets say i created a ec2 instance xx -> stored in github in terraform-vss-module repo in main branch. now use the same ec2 module in project-a...explain in detail with code -
+### Step 1 — Create module repo `terraform-vss-module`
 
-Create Module Repo terraform-vss-module
-ec2/main.tf
-hclresource "aws_instance" "xx" {
+**`ec2/main.tf`**
+
+```hcl
+resource "aws_instance" "xx" {
   ami           = var.ami_id
   instance_type = var.instance_type
 
@@ -146,9 +182,12 @@ hclresource "aws_instance" "xx" {
     Environment = var.environment
   }
 }
+```
 
-ec2/variables.tf
-hclvariable "ami_id" {
+**`ec2/variables.tf`**
+
+```hcl
+variable "ami_id" {
   description = "AMI ID for the EC2 instance"
   type        = string
 }
@@ -169,9 +208,12 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
+```
 
-ec2/outputs.tf
-hcloutput "instance_id" {
+**`ec2/outputs.tf`**
+
+```hcl
+output "instance_id" {
   description = "ID of the EC2 instance"
   value       = aws_instance.xx.id
 }
@@ -185,41 +227,48 @@ output "private_ip" {
   description = "Private IP of the EC2 instance"
   value       = aws_instance.xx.private_ip
 }
+```
 
-Push code to GitHub:
-bash# In your local terraform-vss-module folder
+**Push code to GitHub:**
+
+```bash
 git init
 git add .
 git commit -m "added ec2 module"
 git branch -M main
 git remote add origin git@github.com:your-org/terraform-vss-module.git
 git push -u origin main
-Your GitHub repo looks like this:
+```
+
+Your GitHub repo structure:
+
+```
 terraform-vss-module/
 └── ec2/
     ├── main.tf
     ├── variables.tf
     └── outputs.tf
+```
 
-STEP 2: Create project-a and consume the module
-project-a/main.tf
-hclprovider "aws" {
+---
+
+### Step 2 — Create `project-a` and consume the module
+
+**`project-a/main.tf`**
+
+```hcl
+provider "aws" {
   region = "eu-north-1"
 }
-
-# Calling the EC2 module from terraform-vss-module repo
 
 module "my_ec2_instance" {
   source = "github.com/your-org/terraform-vss-module//ec2?ref=main"
 
-  # Passing values to module variables
   ami_id        = var.ami_id
   instance_type = var.instance_type
   instance_name = var.instance_name
   environment   = var.environment
 }
-
-# Use the outputs from module
 
 output "ec2_instance_id" {
   value = module.my_ec2_instance.instance_id
@@ -228,10 +277,12 @@ output "ec2_instance_id" {
 output "ec2_public_ip" {
   value = module.my_ec2_instance.public_ip
 }
+```
 
+**`project-a/variables.tf`**
 
-project-a/variables.tf
-hclvariable "ami_id" {
+```hcl
+variable "ami_id" {
   type = string
 }
 
@@ -248,71 +299,117 @@ variable "environment" {
   type    = string
   default = "dev"
 }
+```
 
-project-a/terraform.tfvars
-hclami_id        = "ami-0abcdef1234567890"
+**`project-a/terraform.tfvars`**
+
+```hcl
+ami_id        = "ami-0abcdef1234567890"
 instance_type = "t2.micro"
 instance_name = "vss-ec2-instance"
 environment   = "dev"
+```
 
-STEP 3: Run in project-a
-bash# initialise - this DOWNLOADS the module from github
+---
 
-bashterraform plan
+### Step 3 — Run in `project-a`
+
+```bash
+terraform init    # downloads the module from GitHub
+terraform plan
 terraform apply
+```
 
-What // and ?ref= mean:
+---
+
+### Understanding `//` and `?ref=`
+
+```
 github.com/your-org/terraform-vss-module//ec2?ref=main
-│                                        │    │       │
-│                                        │    │       └── branch name (main)
-│                                        │    └────────── subfolder inside repo (ec2/)
-│                                        └─────────────── double slash separates repo from subfolder
-└──────────────────────────────────────────────────────── github repo path
+│                                        │    │    │
+│                                        │    │    └── branch name (main)
+│                                        │    └─────── subfolder inside repo (ec2/)
+│                                        └──────────── double slash separates repo from subfolder
+└───────────────────────────────────────────────────── GitHub repo path
+```
 
-Using a Tag instead of branch (recommended for production):
-bash# In terraform-vss-module repo, create a tag
-git tag v1.0.0
-git push origin v1.0.0
-hcl# In project-a, use tag instead of main branch
-module "my_ec2_instance" {
-  source = "github.com/your-org/terraform-vss-module//ec2?ref=v1.0.0"
-  ...
-}
+> **Recommended for production** — use a tag instead of branch:
+>
+> ```bash
+> git tag v1.0.0
+> git push origin v1.0.0
+> ```
+>
+> ```hcl
+> module "my_ec2_instance" {
+>   source = "github.com/your-org/terraform-vss-module//ec2?ref=v1.0.0"
+> }
+> ```
 
-Q. How can we delete a specific resource named as vss-instance in terraform?
+---
 
+## Q. How do you delete a specific resource named `vss-instance` in Terraform?
+
+```bash
 terraform destroy -target="aws_instance.vss-instance"
+```
 
-Q. i have one ec2 instance created in aws console but not through terraform. how can we  get the ec2 into IAC.
+---
 
-1. Get Instance ID from AWS Console (e.g., i-0abc123...)
-2. Write resource block in .tf file
-3. Run: terraform import aws_instance.<name> <instance-id>
-4. Run: terraform plan  →  fix any drift
-5. Run: terraform apply  →  confirm no changes
-6. Commit .tf files to version control ✅
+## Q. I have an EC2 created in AWS Console (not via Terraform). How do I bring it into IaC?
 
-write a terraform file by giving the same (vss_ec2) instance nme and  known attribute -
+**Steps:**
+
+1. Get Instance ID from AWS Console (e.g., `i-0abc123...`)
+2. Write a resource block in your `.tf` file
+3. Run `terraform import`
+4. Run `terraform plan` → fix any drift
+5. Run `terraform apply` → confirm no changes
+6. Commit `.tf` files to version control
+
+**Write the resource block:**
+
+```hcl
 resource "aws_instance" "vss_ec2" {
-  # Leave empty or add known attributes
   ami           = "ami-xxxxxxxx"
   instance_type = "t2.micro"
 }
+```
 
-terraform import aws_instance.vss_ec2 <your-instance-id>
-# Example:
+**Run the import:**
+
+```bash
 terraform import aws_instance.vss_ec2 i-0a1b2c3d4e5f67890
+```
 
-Q. lets say i created a ec2 instance of  name vss-ec2 of type t3.micro it got created after terraform apply...now i will change to type t3.large. will it change the existing ec2 instance ? how it will behave?
+---
 
-You update the config instance_type = "t3.large", do terraform plan -> ~  ( update in-place ).it will update the same ec2 instance without creating a new one.
-<img width="545" height="280" alt="image" src="https://github.com/user-attachments/assets/98b150e3-7cc2-44fd-95b7-15149142bd81" />
+## Q. I change an EC2 instance type from `t3.micro` to `t3.large`. Will it replace or update the instance?
 
--/+ destroy and recreate   ❌ (data loss risk)
-~   update in-place        ✅ (safe, just downtime)
-+   create new             ✅
--   destroy                ❌
+It will **update in-place** — the same EC2 instance is modified without recreation.
 
-Q. How will you set up terraform state file in backend? how dynsmodb comes into picture? 
+```
+terraform plan output:
+  ~ update in-place   (stop → resize → start, ~1-2 min downtime)
+```
 
-Q. what is dynamic block in terraform.
+![Plan output](https://github.com/user-attachments/assets/98b150e3-7cc2-44fd-95b7-15149142bd81)
+
+| Symbol | Meaning | Risk |
+|---|---|---|
+| `-/+` | Destroy and recreate | ❌ Data loss risk |
+| `~` | Update in-place | ✅ Safe, minor downtime |
+| `+` | Create new | ✅ Safe |
+| `-` | Destroy | ❌ Destructive |
+
+---
+
+## Q. How will you set up a Terraform state file in a backend? How does DynamoDB come into picture?
+
+> *(Answer to be added)*
+
+---
+
+## Q. What is a dynamic block in Terraform?
+
+> *(Answer to be added)*
