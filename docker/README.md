@@ -1,76 +1,140 @@
-# Docker Notes:-
---------------
-Q. What is init process. how it works in linux...can we run docker with init?
+# Docker Notes
 
-The init process is the first process started by the Linux kernel after it boots. It is the parent of all processes on the system.
+---
 
-It always gets PID 1
-The kernel starts it directly — it is never spawned by another process
-It runs until the system shuts down
-If PID 1 dies → kernel panic, system crashes
+## Q. What is the init process? How does it work in Linux? Can we run Docker with init?
 
-ps -e | grep 1 or ps aux --pid 1
+The init process is the **first process started by the Linux kernel** after it boots. It is the parent of all processes on the system.
 
-o/p -> system
+- Always gets **PID 1**
+- The kernel starts it directly — it is never spawned by another process
+- Runs until the system shuts down
+- If PID 1 dies → kernel panic, system crashes
 
-systemd does far more than just start processes — it manages the entire system lifecycle:
-<img width="260" height="151" alt="image" src="https://github.com/user-attachments/assets/d7b293de-3ff6-4f0b-916d-a5ac41849d41" />
+```bash
+ps -e | grep 1
+# or
+ps aux --pid 1
+# output -> systemd
+```
 
+`systemd` does far more than just start processes — it manages the entire system lifecycle.
+
+![systemd overview](https://github.com/user-attachments/assets/d7b293de-3ff6-4f0b-916d-a5ac41849d41)
+
+---
+
+### PID 1 inside a Docker container
+
+```dockerfile
 CMD ["node", "index.js"]   # node becomes PID 1 inside the container
-Solution — use tini as a lightweight init inside containers:
+```
+
+**Problem:** `node` (or any app) is not designed to handle Linux signals or reap zombie processes as PID 1.
+
+**Solution — use `tini` as a lightweight init inside containers:**
+
+```dockerfile
 FROM node:18
-
 RUN apt-get install -y tini
-
 ENTRYPOINT ["/usr/bin/tini", "--"]   # tini becomes PID 1, handles signals + zombies
 CMD ["node", "index.js"]             # your app runs as PID 2
+```
 
-Or with Docker's built-in init:
-bashdocker run --init myapp    # Docker injects tini automatically as PID 1
+**Or use Docker's built-in init flag:**
 
-Q. what is build context? how its used in docker.
-Build context is a directory where docker uses to locate files (source code, dependencies) for build process. it can be current path or relative path
-docker build -t --name imagedemo . -> '.' is the build context in current directory
-docker build -t --name imagedemo /vss/build-path ->  build context defined in relative path
-docker build -t --name image-demo -f /path/to/custom-dockerfile /path/to/build-context -> build context defined in relative path and dockerfile reffered from relative path.
+```bash
+docker run --init myapp    # Docker injects tini automatically as PID 1
+```
 
-Q. Different docker commands -
-List all containers (including stopped ones): docker ps -a
-Inspect container metadata: docker inspect <container_id> or docker inspect <image_id>
-List running processes in a container: docker top <container_id>
-Stop a specific container: docker stop <container_id>
-Start a stopped container: docker start <container_id>
-Stop all running containers: docker stop $(docker ps -q)
-Restart a container: docker restart <container_id>
-Delete a specific container: docker rm <container_id>
-Delete all stopped containers: docker container prune
+---
 
-Q. Write a docker file to run a flask application.
+## Q. What is build context? How is it used in Docker?
 
-Docker file to run a python flask application in docker container
+**Build context** is the directory Docker uses to locate files (source code, dependencies, etc.) for the build process. It can be the current path or a relative path.
 
+```bash
+# Current directory as build context
+docker build -t imagedemo .
+
+# Relative path as build context
+docker build -t imagedemo /vss/build-path
+
+# Custom Dockerfile path + custom build context path
+docker build -t image-demo -f /path/to/custom-dockerfile /path/to/build-context
+```
+
+| Argument | Description |
+|---|---|
+| `.` | Build context is the current directory |
+| `/vss/build-path` | Build context is a specific path |
+| `-f /path/to/dockerfile` | Use a Dockerfile from a custom location |
+
+---
+
+## Q. Different Docker commands
+
+| Command | Description |
+|---|---|
+| `docker ps -a` | List all containers (including stopped ones) |
+| `docker inspect <container_id>` | Inspect container metadata |
+| `docker inspect <image_id>` | Inspect image metadata |
+| `docker top <container_id>` | List running processes inside a container |
+| `docker stop <container_id>` | Stop a specific container |
+| `docker start <container_id>` | Start a stopped container |
+| `docker stop $(docker ps -q)` | Stop all running containers |
+| `docker restart <container_id>` | Restart a container |
+| `docker rm <container_id>` | Delete a specific container |
+| `docker container prune` | Delete all stopped containers |
+
+---
+
+## Q. Write a Dockerfile to run a Flask application
+
+**`vss_flask_app.py`** — simple Flask app to containerise.
+
+**`Dockerfile`:**
+
+```dockerfile
 FROM python:3.10-slim
 
-#create a working directory in container.
+# Create a working directory inside the container
 WORKDIR /vss_app
 
-# it will copy the app.tar (compressed file) to container(/app) and will extract it. ADD automatically extracts and handles URL
-#ADD vss_flask_app.py /vss_app -> it will work also
+# COPY simply copies from source to destination (no extraction, no URL handling)
+# ADD would also work here and can handle .tar extraction and URLs automatically:
+#   ADD vss_flask_app.py /vss_app
 COPY vss_flask_app.py /vss_app
 
-#Copies everything from current directory of host to container. (we can put 'COPY . /app'). Copy simply copies from source to destination without extraction and URL handling
-#COPY . .
-
-#install necessary libraries and configurations ( in Linux RUN apt intall && apt update -y nginx)
+# Install necessary libraries
+# For Linux system packages: apt update && apt install -y nginx
 RUN pip install flask && apt update && apt install -y build-essential
 
-#while running the container it exposes the application to port 5000. but while doing docker run we need to mention -p to open the port in host. ( -p <hostport>:<containerPort>  i.e -p 5000:80)
+# Expose port 5000 inside the container
+# Still need -p flag when running: docker run -p <hostPort>:<containerPort>
+# e.g. docker run -p 5000:5000
 EXPOSE 5000
 
-CMD [ "python","vss_flask_app.py"]
+CMD ["python", "vss_flask_app.py"]
+```
 
-<img width="628" height="201" alt="image" src="https://github.com/user-attachments/assets/b8855aa8-cdf5-40c4-8ab5-6262c63bc9c1" />
+> **`COPY` vs `ADD`**
+> - `COPY` — simply copies files from source to destination. No extras.
+> - `ADD` — does everything `COPY` does, plus auto-extracts `.tar` files and supports URLs.
+> - Prefer `COPY` unless you specifically need extraction or URL support.
 
-<img width="1822" height="327" alt="image" src="https://github.com/user-attachments/assets/e673bda3-496f-4a70-b127-9dcdce615784" />
-<img width="862" height="253" alt="image" src="https://github.com/user-attachments/assets/23d0fb48-b207-4ece-a943-b273f79e1b67" />
+**Build and run:**
 
+```bash
+# Build the image
+docker build -t vss-flask-app .
+
+# Run the container with port mapping
+docker run -p 5000:5000 vss-flask-app
+```
+
+![Dockerfile structure](https://github.com/user-attachments/assets/b8855aa8-cdf5-40c4-8ab5-6262c63bc9c1)
+
+![Build output](https://github.com/user-attachments/assets/e673bda3-496f-4a70-b127-9dcdce615784)
+
+![Running container](https://github.com/user-attachments/assets/23d0fb48-b207-4ece-a943-b273f79e1b67)
