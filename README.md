@@ -1,9 +1,3 @@
-# Interview-Preparation
-for interview questions and answers
-
-# Interview-Preparation
-for interview questions and answers
-
 # Terraform Notes n interview questions:-
 ========================================
 terraform init - It initializes the process by downloading provider plugins for cloud provider (Aws)/azure/gcp. initializes the backend (local or remote like in S3), and sets up the .terraform/ directory.
@@ -276,3 +270,35 @@ Q. How can we delete a specific resource named as vss-instance in terraform?
 terraform destroy -target="aws_instance.vss-instance"
 
 Q. i have one ec2 instance created in aws console but not through terraform. how can we  get the ec2 into IAC.
+
+1. Get Instance ID from AWS Console (e.g., i-0abc123...)
+2. Write resource block in .tf file
+3. Run: terraform import aws_instance.<name> <instance-id>
+4. Run: terraform plan  →  fix any drift
+5. Run: terraform apply  →  confirm no changes
+6. Commit .tf files to version control ✅
+
+write a terraform file by giving the same (vss_ec2) instance nme and  known attribute -
+resource "aws_instance" "vss_ec2" {
+  # Leave empty or add known attributes
+  ami           = "ami-xxxxxxxx"
+  instance_type = "t2.micro"
+}
+
+terraform import aws_instance.vss_ec2 <your-instance-id>
+# Example:
+terraform import aws_instance.vss_ec2 i-0a1b2c3d4e5f67890
+
+Q. lets say i created a ec2 instance of  name vss-ec2 of type t3.micro it got created after terraform apply...now i will change to type t3.large. will it change the existing ec2 instance ? how it will behave?
+
+You update the config instance_type = "t3.large", do terraform plan -> ~  ( update in-place ).it will update the same ec2 instance without creating a new one.
+<img width="545" height="280" alt="image" src="https://github.com/user-attachments/assets/98b150e3-7cc2-44fd-95b7-15149142bd81" />
+
+-/+ destroy and recreate   ❌ (data loss risk)
+~   update in-place        ✅ (safe, just downtime)
++   create new             ✅
+-   destroy                ❌
+
+Q. How will you set up terraform state file in backend? how dynsmodb comes into picture? 
+
+Q. what is dynamic block in terraform.
