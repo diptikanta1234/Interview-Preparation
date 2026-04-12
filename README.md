@@ -1,16 +1,25 @@
 # Terraform Notes n interview questions:-
 ========================================
+
 terraform init - It initializes the process by downloading provider plugins for cloud provider (Aws)/azure/gcp. initializes the backend (local or remote like in S3), and sets up the .terraform/ directory.
+
 terraform validate	-> Check if any syntax error in configuration.
-terraform plan	-> Its the dry-run. Preview infrastructure changes/
+
+terraform plan	-> Its the dry-run. Preview infrastructure changes
+
 terraform apply ->	Deploy resources
+
 terraform show	-> Display current state
+
 terraform destroy ->	deletes infrastructure
 
 Q.lets say i want to create ec2 in qa account. how do you manage the credential to create ec2 in that account while i apply terraform apply.
+
 the account/IAMuser for which we are creating a resource, go to credentials -> generate the secret key -> use - CLI -> download the key
 There are 3 ways we should prefer doing this -
+
 WAY 1: - in the host/bastion from where you are doing terraform apply, create a '~/.aws/credentials' then set the aws_access_key_id , aws_secret_access_key with profile name. same profile you can use in configuration files to create resource
+
 [terraform-user]
 aws_access_key_id     = AKIAIOSFODNN7EXAMPLE
 aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -61,6 +70,7 @@ jobs:
       - uses: actions/checkout@v4
 
 WAY 3:- through IAM role ( assume_role )
+
 The assume_role pattern is only needed when Terraform runs in account A but needs to create resources in account B (true multi-account). mainly cross-account.
 
 This is the proper production pattern. Your principal (developer machine, CI runner, or EC2 instance) has one identity, and Terraform temporarily assumes a role in the Prod account. here the ec2 in CI runner and production infra a/c mostlyare different.
@@ -77,6 +87,7 @@ json{
   }]
 }
 Step 2 — attach the role in provider.tf:
+
 hclprovider "aws" {
   region = "ap-south-1"
 
@@ -115,6 +126,7 @@ module "my_vpc" {
 }
 
 Q. Have you used modules in one project by importing from other projects. in how many ways the module can be stored remotely and can be imported and used in other project in ur organisation ?
+
 through github ( using in our currect project) oe gitlab or bitbucket
 through S3
 Terraform Private Registry (Terraform Cloud / Enterprise)
@@ -196,6 +208,7 @@ hclprovider "aws" {
 }
 
 # Calling the EC2 module from terraform-vss-module repo
+
 module "my_ec2_instance" {
   source = "github.com/your-org/terraform-vss-module//ec2?ref=main"
 
@@ -207,6 +220,7 @@ module "my_ec2_instance" {
 }
 
 # Use the outputs from module
+
 output "ec2_instance_id" {
   value = module.my_ec2_instance.instance_id
 }
