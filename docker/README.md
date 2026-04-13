@@ -258,9 +258,57 @@ CMD:-
 =====
 
 CMD is the default command that runs when the container starts.
-It can be overriden using ' docker run <image_name> <commands>
+Commands defined in CMD can be replaced/overriden using ' docker run <image_name> <commands>
 
-e.g -> i created a dockerfile named as cmd and using ping command to ping to a website
+e.g -> i created a dockerfile named as cmd-dockerfile and using ping command to ping to a website -
+FROM ubuntu
+RUN apt update && apt install iputils-ping -y
+CMD ["ping","-c","4","google.com"]
+
+docker build -t cmd-img:v1 -f ./cmd-dockerfile .
+
+docker run --name cmd-container cmd-img:v1
+-it will show the output that is defined in CMD comand in docker file.
+but we can ovverride the CMD by running below -
+
+<img width="867" height="671" alt="image" src="https://github.com/user-attachments/assets/42674409-1848-4844-b626-06f70b30184b" />
+
+ENTRYPOINT:-
+
+ENTRYPOINT executes when the container starts. It can't be replaced/overriden but it can be appended.
+
+create a dockerfile called entrypoint-dockerfile -
+
+FROM ubuntu
+RUN apt update && apt install iputils-ping -y
+
+ENTRYPOINT ["echo","Hello world"]
+
+Build the image =>  docker build -t entrypoint-img:v1 -f ./entrypoint-dockerfile .
+
+run the image => docker run  entrypoint-img:v1
+
+<img width="470" height="122" alt="image" src="https://github.com/user-attachments/assets/2e71a3f0-332e-43d2-a678-c9b401199a9a" />
+
+We can use ENTRYPOINT and CMD in the same docker file to use effectively. As CMD can be replaced and ENTRYPOINT can be appended, we will keep the ENTRYPOINT at first and CMD at later. Here basically we are passing a argument that is defined in CMD to entry point which will be appended.
+
+e.g- write a dockerfile as Cmd-entrypoint-df 
+FROM ubuntu
+RUN apt update && apt install iputils-ping -y
+ENTRYPOINT ["ping","-c","4"]
+CMD ["google.com"]
+
+docker build -t ce-img:v1 -f ./cmd-entrypoint-df .
+
+docker run ce-img:v1
+docker run ce-img:v1 flipkart.com //it will replace CMD and append as a arguent to ENTRYPOINT
+
+NOTE: ENTRYPOINT can be fully replaced by use of --entrypoint explicitly. The CMD will have no value at this time.
+suppose we want to run some other command that is defined in ENTRYPOINT, we can use --entrypoint as below -
+<img width="614" height="538" alt="image" src="https://github.com/user-attachments/assets/022c041b-a35e-4d09-891e-7d796c4a1d4d" />
+
+
+
 
 
 
