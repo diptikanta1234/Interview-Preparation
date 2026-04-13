@@ -77,16 +77,19 @@ docker build -t image-demo -f /path/to/custom-dockerfile /path/to/build-context
 | Command | Description |
 |---|---|
 | `docker ps -a` | List all containers (including stopped ones) |
-| `docker inspect <container_id>` | Inspect container metadata |
-| `docker inspect <image_id>` | Inspect image metadata |
+| `docker container inspect <container_id>  or  docker inspect <container_id>` | Inspect container metadata |
+| `docker container inspect <image_id>  or  docker inspect <image_id>` | Inspect image metadata |
 | `docker top <container_id>` | List running processes inside a container |
-| `docker stop <container_id>` | Stop a specific container |
-| `docker start <container_id>` | Start a stopped container |
+| `docker container stop <image_id>  or  docker stop <container_id>` | Stop a specific container |
+| `docker container start <image_id>  or  docker start <container_id>` | Start a stopped container |
 | `docker stop $(docker ps -q)` | Stop all running containers |
-| `docker restart <container_id>` | Restart a container |
-| `docker rm <container_id>` | Delete a specific container |
+| `docker container restart <image_id>  or  docker restart <container_id>` | Restart a container |
+| `docker container rm <image_id>  or  docker rm <container_id>` | Delete a specific container |
 | `docker container prune` | Delete all stopped containers |
 
+| `docker volume create <volume-name> ` | Create a docker volume with specific name |
+| `docker volume create ls ` | Show lists of volumes |
+| `docker run -itd --name <container_name> --mount source=<volume-name-created-above>,target=/directory-name <image-name> ` | mount a specific volume on a particular directory in a container |
 ---
 
 ## Q. Write a Dockerfile to run a Flask application
@@ -160,4 +163,104 @@ force delete the image directly (not recommended)
 bashdocker rmi -f dipti-img-v2:latest
 
 ⚠️ Force delete (-f) removes the image tag but the container still exists in a broken state — it loses its image reference. Always prefer stopping and removing the container cleanly first.
+
+Q. How to create volume in docker and mount it to a container ? If the container is stopped how can we recover these files. can we attach that volume to another container?
+
+docker volume create dipti-volume
+
+docker run -itd --name dipti-container-1 --mount source=dipti-volume,target=/dipti-dir im-img:latest  ->   mount a volume on a particular directory in a container that is got created from  image im-img:latest created brfore.
+
+enters into the containe and check the mount point created on directory /dipti-dir -
+
+docker exec -it dipti-container-1 /bin/bash
+df -f 
+<img width="546" height="252" alt="image" src="https://github.com/user-attachments/assets/3092759a-1368-40ac-b9a4-c4c85d3500f8" />
+
+you can create some files in that mount point and save. these files will also be stored in volume.
+docker volume inspect dipti-volume -> it show the path of volumes. ( "Mountpoint": "/var/lib/docker/volumes/dipti-volume/_data"  )
+
+Now if the container is stopped/teminated, we can get the date from above path in volume dipti-volume.
+
+Attach this volume to another container and access those data-
+docker run -itd --name dipti-cont-recov --mount source=dipti-volume,target=/test-recov-dir dipti-img-v2:latest
+now enters into container dipti-cont-recov and check files in filesystem /test-recov-dir
+
+Q. explain docker networking ? whats the default and custom networking ? what's the use case of custom networking.
+
+When Docker is installed, it creates a virtual networking layer that allows containers to communicate with each other, the host, and the outside world. When you run any container without specifying a network, it joins the default bridge network (docker0).
+
+Problem: Containers on the default bridge cannot resolve each other by name. You must use 'IP addresses', which change on every restart. so that you can't connect to other container with its name, instead you have to use their Ip which change on every restart which is diffecult.
+
+but if we create custom networking, Containers now resolve each other by name automatically. Docker's built-in DNS resolver handles name resolution automatically on custom networks.
+
+examples -
+
+<img width="911" height="641" alt="image" src="https://github.com/user-attachments/assets/3997d135-fdbe-4d85-8090-c5a21092692c" />
+
+The Default bridge Network — and Its Problem
+When you run any container without specifying a network, it joins the default bridge network (docker0).
+bashdocker run -d --name app1 nginx
+docker run -d --name app2 nginx
+Problem: Containers on the default bridge cannot resolve each other by name. You must use IP addresses, which change on every restart.
+bash# This FAILS on default bridge
+docker exec app1 ping app2   # ping: app2: Name or service not known
+This is exactly why custom networks exist.
+
+Creating and Using a Custom Network
+Step 1 — Create a custom bridge network
+
+docker network create my-custom-net -> it will create a custom network with subnet, ip-range, gateway. but if you want to define those specifically, then use below approach - 
+
+docker network create \
+  --driver bridge \
+  --subnet 172.20.0.0/16 \
+  --ip-range 172.20.240.0/20 \
+  --gateway 172.20.0.1 \
+  my-custom-net
+Step 2 — Run containers on that network
+bashdocker run -d --name backend --network my-custom-net my-backend-img
+docker run -d --name frontend --network my-custom-net my-frontend-img
+
+Step 3 — Containers now resolve each other by name automatically
+bashdocker exec frontend ping backend       # Works!
+docker exec frontend curl http://backend:5000/api   # Works!
+Docker's built-in DNS resolver handles name resolution automatically on custom networks.
+Useful network commands
+bashdocker network ls                          # List all networks
+docker network inspect my-custom-net       # Detailed info, connected containers
+docker network connect my-custom-net app3  # Attach running container app3 to network my-custom-net
+docker network disconnect my-custom-net app3
+docker network rm my-custom-net            # Delete network
+
+One of Use Case — Microservices Isolation
+In a microservices setup, you don't want every service talking to every other service.
+
+docker network create payments-net
+docker network create inventory-net
+docker network create notifications-net
+
+# Payment service and its DB
+docker run -d --name payment-svc --network payments-net payment-img
+docker run -d --name payment-db  --network payments-net postgres
+
+# Inventory service and its DB
+docker run -d --name inventory-svc --network inventory-net inventory-img
+docker run -d --name inventory-db  --network inventory-net postgres
+
+# API Gateway connects to all services
+docker network connect payments-net api-gateway
+docker network connect inventory-net api-gateway
+docker network connect notifications-net api-gateway
+
+Q. Difference between CMD and ENTRYPOINT ?
+
+CMD:-
+=====
+
+CMD is the default command that runs when the container starts.
+It can be overriden using ' docker run <image_name> <commands>
+
+e.g -> i created a dockerfile named as cmd and using ping command to ping to a website
+
+
 
