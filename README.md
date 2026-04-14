@@ -14,6 +14,7 @@
 | `terraform destroy` | Deletes infrastructure |
 
 ---
+<img width="725" height="375" alt="image" src="https://github.com/user-attachments/assets/834f4005-5b9c-49e4-9496-a414c9f46a7d" />
 
 ## Q. How do you manage credentials when creating an EC2 in a QA account using `terraform apply`?
 
@@ -148,6 +149,7 @@ When you run `terraform apply`, the AWS SDK calls `sts:AssumeRole`, gets tempora
 | Terraform Public Registry | `registry.terraform.io/modules/...` |
 
 ![Module sources diagram](https://github.com/user-attachments/assets/a2576188-68ee-4d10-a941-7aa8ac5c6be7)
+<img width="1191" height="167" alt="image" src="https://github.com/user-attachments/assets/013eb675-9fa7-4e11-99a6-d76fdab2c1c8" />
 
 **Using modules from GitHub in `project-a/main.tf`:**
 
@@ -355,6 +357,40 @@ terraform destroy -target="aws_instance.vss-instance"
 ```
 
 ---
+## Q. lets say i am creating 3 ec2 instance with same type having count=3 using below code. Now i want to delete a specific instance. How can we do it in Terraform?
+resource "aws_instance" "demo" {
+    ami="ami-077d1b9f9a1902bbc"
+    instance_type = "t3.micro"
+    count = 3
+
+    tags = {
+        Name = "dev-vss-server-${count.index + 1}"
+    }
+}
+
+Ans: we can delete the ec2 instance using its name i.e aws_instance.demo[0] or aws_instance.demo[1] or aws_instance.demo[0]. but not dev-vss-server-1 ( this is the tag).
+
+how can we get which instanceId belong to demo[0]...lets break into
+
+```bash
+terraform state list
+terraform state show demo[0] //check the instance-id that you want to delete
+terraform destroy -target="aws_instance.demo[0]"
+```
+<img width="1013" height="551" alt="image" src="https://github.com/user-attachments/assets/a6a3bb50-76f4-4175-ab70-68640ec62b4f" />
+
+terraform state list | grep aws_instance --> can see how many ec2 istance is there
+---
+
+Q.lets say somebody in my project did terraform destroy -target=aws_instance.demo[0] as its not needed as per requirement. but in statefile its still having...if someby adding some security group to a instance once we do terraform apply it will create again 2 resource...whats the ideal way to work in this scenario?
+
+ans: This is a classic Terraform state drift + team workflow problem
+Terraform works like this: State file = source of truth
+Better to avild -target manually, if it identifies the changes it will sync as per .tf file or if someone modify other thing and does terraform.apply it will be creting another instnce.
+
+better approach is -
+<img width="1001" height="591" alt="image" src="https://github.com/user-attachments/assets/25140df3-e77d-4616-8cd9-83cd17bdd8b8" />
+
 
 ## Q. I have an EC2 created in AWS Console (not via Terraform). How do I bring it into IaC?
 
