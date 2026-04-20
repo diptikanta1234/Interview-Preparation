@@ -18,3 +18,33 @@ Subscriptions -
 <img width="1672" height="959" alt="image" src="https://github.com/user-attachments/assets/9d97502e-2a6b-49b6-86bc-7e1471532991" />
 
 we can use 'Cost management' to check bills or invoice.
+
+for high availability azure uses below -
+<img width="834" height="371" alt="image" src="https://github.com/user-attachments/assets/823c6850-1e2f-48fc-aa04-f618a2dc5800" />
+<img width="1150" height="622" alt="image" src="https://github.com/user-attachments/assets/bf5afaf4-46b7-422d-9a58-488e78bf5a37" />
+
+Availability sets are present in a single Availability zone (AZ). If aby distaster comes in that AZ, VMs may get down-
+<img width="1136" height="632" alt="image" src="https://github.com/user-attachments/assets/0d86b12c-d2a4-4351-ae21-6aa22aebc8dc" />
+
+VMSS( virtual achine scale set)...similar to auto scaling in AWS
+
+
+<img width="921" height="594" alt="image" src="https://github.com/user-attachments/assets/4ea8a1eb-142a-4a1a-85de-2f91c91cd83d" />
+
+<img width="1214" height="599" alt="image" src="https://github.com/user-attachments/assets/fd7021d3-1200-4ff9-bc6e-c2511db25572" />
+
+VNET ( Virtual Network ):-
+its similar to VPC.
+Azure Bastion is a paid service that provides secure RDP/SSH connectivity to your virtual machines over TLS. When you connect via Azure Bastion, your virtual machines do not need a public IP address
+
+Azure Firewall
+Azure Firewall is a managed cloud-based network security service that protects your Azure Virtual Network resources.
+
+Custom data and cloud init
+Pass a cloud-init script, configuration file, or other data into the virtual machine while it is being provisioned. The data will be saved on the VM in a known location
+
+User data
+Pass a script, configuration file, or other data that will be accessible to your applications throughout the lifetime of the virtual machine. Don't use user data for storing your secrets or passwords.
+
+
+<img width="1269" height="671" alt="image" src="https://github.com/user-attachments/assets/0e799991-a445-488a-9683-516257cfc4de" />
