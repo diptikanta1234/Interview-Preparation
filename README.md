@@ -48,3 +48,41 @@ Pass a script, configuration file, or other data that will be accessible to your
 
 
 <img width="1269" height="671" alt="image" src="https://github.com/user-attachments/assets/0e799991-a445-488a-9683-516257cfc4de" />
+
+i created vnet -> bastion -> firewall -> a vm in private subnet to install nginx in azure portal. now i allowed port 22,80,443 as inbound while creating the VM. now i connected to vm through bastion and updating package but The apt-get update is failing because the VM can't reach azure.archive.ubuntu.com:80 — it's timing out.
+
+Root Cause
+Even though you have a Firewall, traffic from the private subnet isn't being routed through it to reach the internet. You're missing two things:
+
+-> A route table directing internet-bound traffic (0.0.0.0/0) → Azure Firewall
+-> DNAT/Network rules on the Firewall allowing outbound HTTP/HTTPS
+
+step 1 : Go to Route Tables → Create new 
+
+Route name -> defaulti-Private-subnet-to-firewall
+
+Address prefix -> 0.0.0.0/0
+
+Next hop type -> Virtual appliance
+
+Next hop address -> Private IP of your Azure Firewall (e.g. 10.0.0.4)
+
+Now add rt defaulti-Private-subnet-to-firewall to priate subnet. ( in this way the private subnet will get internet when its not having public ip). Bastion is to connect through ssh. go to default subnet -> add the rt as defaulti-Private-subnet-to-firewall. then add the NS that is created while creting V to allow port - 22,80,443.
+<img width="1050" height="451" alt="image" src="https://github.com/user-attachments/assets/bcadb918-e846-410a-a7d4-f86637059af3" />
+
+
+Step 2 — Add a Network Rule to Your Azure Firewall
+
+In Azure Portal → Firewall → Rules → Network Rule Collection → Add:
+
+SourceYour private subnet CIDR (e.g. 10.0.1.0/24)
+
+Destination - * 
+
+Destination Ports - 80, 443
+
+I will configure the policy in firewall so that if any body accessing to public Ip over a port ( <Public Ip of firewall>:4000 ), then my website should display which is inside vm.
+<img width="1751" height="484" alt="image" src="https://github.com/user-attachments/assets/d8992b71-4c0c-4ed7-9b37-05fad6e82fbe" />
+
+
+
