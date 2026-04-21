@@ -81,8 +81,28 @@ Destination - *
 
 Destination Ports - 80, 443
 
+
+
 I will configure the policy in firewall so that if any body accessing to public Ip over a port ( <Public Ip of firewall>:4000 ), then my website should display which is inside vm.
 <img width="1751" height="484" alt="image" src="https://github.com/user-attachments/assets/d8992b71-4c0c-4ed7-9b37-05fad6e82fbe" />
 
+Azure interview question by Veeramala-
+
+<img width="940" height="355" alt="image" src="https://github.com/user-attachments/assets/999689d2-a3ed-4711-8401-3334e24f97d0" />
+<img width="940" height="371" alt="image" src="https://github.com/user-attachments/assets/3d19721c-7818-47ca-8da9-722d0cd11278" />
+<img width="940" height="420" alt="image" src="https://github.com/user-attachments/assets/8e05a9af-726b-4822-8925-f68cb6a993a0" />
+<img width="782" height="247" alt="image" src="https://github.com/user-attachments/assets/51c782e3-d33d-4ff5-a37f-789380cf1789" />
+
+Aws user data is similar to azure custom data.
+Azure user data is completely different.
+
+Lets say we are creating a vm/ec2 through cli or ui or IAC, we need some dependency or application code to be installed during the creation of vm. So we are keeping those in custom data in azure (aws -> user data) as script.
+
+<img width="809" height="338" alt="image" src="https://github.com/user-attachments/assets/f7aff3b4-3b9b-4729-a5f8-a10f795bba12" />
+<img width="940" height="391" alt="image" src="https://github.com/user-attachments/assets/63f8830a-4d84-4421-a926-265526e61fc3" />
+<img width="940" height="533" alt="image" src="https://github.com/user-attachments/assets/1cafb120-c17c-49f0-adae-052662421eb1" />
+<img width="940" height="585" alt="image" src="https://github.com/user-attachments/assets/5dd42396-18e1-4ed2-a6f3-18dae25a8343" />
+<img width="940" height="315" alt="image" src="https://github.com/user-attachments/assets/a64abe23-7044-4fea-8a08-121af1d8ac69" />
+<img width="940" height="553" alt="image" src="https://github.com/user-attachments/assets/cf7a11fe-cd25-4dad-aa74-2fefe3b2c1a5" />
 
 
