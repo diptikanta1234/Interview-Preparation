@@ -79,6 +79,8 @@ num = int(input("Enter the ending number: "))
 # Initial values
 n1, n2 = 0, 1
 
+#using for loop
+'''
 for i in range(0, num):
     print(n1)
 
@@ -87,6 +89,20 @@ for i in range(0, num):
     # Update values
     n1 = n2
     n2 = nth
+'''
+
+#we can use while loop as well.
+count=0
+while (count < num):
+    print(n1)
+    nth=n1+n2
+    
+    #update values
+    n1=n2
+    n2=nth
+    
+    count +=1
+
 ```
 
 ---
