@@ -104,7 +104,8 @@ Enter the ending number: 5
 
 ---
 
-``` leus take iteration umber as num=5
+```text
+lets take iteration umber as num=5
 i=0 t0 4
 i=0 --> n1=0,n2=1 nth=0+1=1  updated n1=1, n2=1
 i=1 --> n1=1,n2=1 nth=1+1=2  updated n1=1, n2=2
