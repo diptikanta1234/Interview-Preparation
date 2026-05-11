@@ -191,7 +191,36 @@ else:
 
 ```
 ---
-        
+## Question 5
+**Write a Python program to reverse a string.**
+
+---
+
+## Python Program
+
+```python
+str = input("Enter a string : ")
+
+rev_str = reversed(str)
+
+print(type(rev_str)) #<class 'reversed'>
+print(type(str))     #<class 'str'>
+
+#prints the reversed string in list. 
+#print(list(rev_str))
+
+print(''.join(list(rev_str)))
+
+'''
+join() is a string method used to combine multiple items into a single string.
+'separator'.join(iterable)
+
+letters = ['P', 'y', 't', 'h', 'o', 'n']
+print(''.join(letters)) // output: Python
+print('*',join(letters)) // output: P*y*t*h*o*n
+''' 
+```
+---    
         
         
         
