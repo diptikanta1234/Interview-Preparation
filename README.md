@@ -163,6 +163,36 @@ else:
 
 ```
 ---
+## Question 4
+**Write a Python program to display its a leap year or not.**
+
+---
+
+## Python Program
+'''
+Logic: A a year is called a leap year -
+ 1. if its a century year( ending with 00 [ divisible by 100] ), it should be divisible by 400 
+ 2.  If its a non-century year, it should be divisible by 4.
+ '''
+
+```python
+year = int(input("Enter a year : "))
+
+# century year means it should be divisible by 100
+if (year % 400 == 0) and (year % 100 == 0):
+    print("{0} is a leap year".format(year))
+
+# non-century year means it should not be divisible by 100
+elif (year % 4 == 0) and (year % 100 != 0):
+    print("{0} is a leap year".format(year))
+
+else:
+    print(f"{year} is not a leap year.")
+
+```
+---
+        
+        
         
         
         
