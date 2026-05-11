@@ -129,7 +129,39 @@ i=2 --> n1=1,n2=2 nth=1+2=3  updated n1=2, n2=3
 i=3 --> n1=2,n2=3 nth=2+3=5  updated n1=3, n2=5
 i=4 --> n1=3,n2=5 nth=3+5=8  updated n1=5, n2=8
 ```
+## Question
+**Write a Python program to display the Factorial of a given number.**
 
+---
+
+## Python Program
+
+```python
+num=int(input("Enter a number for factorial : "))
+
+fact = 1
+
+if num == 0:
+    print(f"factorial of {num} is 0")
+elif num == 1:
+    print( f"factorial of {num} is 1")
+else:
+    
+    #using for loop
+    '''
+    for i in range(2,num+1):
+        fact = i * fact
+    print (f"Factorial of {num} is {fact}")
+    '''
+    
+    #using while loop
+    count=1
+    while count <= num:
+        fact = count * fact
+        count +=1
+    print(f"Factorial of {num} is {fact}.")
+
+```
 ---
         
         
