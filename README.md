@@ -223,15 +223,73 @@ print('*',join(letters)) // output: P*y*t*h*o*n
 ---    
 
 ## break Vs continue
-**
-break	-> Stops the entire loop and comes out of the loop.
-continue ->	Skips only the current iteration and continues the loop
-**
-
+**break	-> Stops the entire loop and comes out of the loop. **
+**continue ->	Skips only the current iteration and continues the loop **
+```
 <img width="1149" height="214" alt="image" src="https://github.com/user-attachments/assets/2c2a7aba-dd7a-4f55-95a9-9e0ce0aecacc" />
 
-<img width="1150" height="236" alt="image" src="https://github.com/user-attachments/assets/79e3fb96-2679-4677-85b8-37eccfa78c5b" />
 
+<img width="1150" height="236" alt="image" src="https://github.com/user-attachments/assets/79e3fb96-2679-4677-85b8-37eccfa78c5b" />
+```
+---
+
+## Question 6
+**Write a Python calculator program.**
+
+---
+
+## Python Program
+
+```python
+def add(num1, num2):
+    return num1 + num2
+def sub(num1, num2):
+    return num1 - num2
+def mul(num1, num2):
+    return num1 * num2
+def div(num1, num2):
+    try:
+        return num1/num2
+    except ZeroDivisionError:
+        print ("ZeroDivisionError - enter non-zero value")
+        
+
+print("1 -> Addition")
+print("2 -> Substraction")
+print("3 -> Multiplication")
+print("4 -> Division")
+
+choice = input("Select correct option/number for above operation - ")
+while True:
+    if choice in ('1','2','3','4'):
+        try:
+            num1 = float(input("Enter num1 : "))
+            num2 = float(input("Enter num2 : "))
+        except ValueError:
+            print("Error: Enter correct value..")
+            continue
+        //To catch other exceptions
+        except exception as e:
+            print("Some exception occuered",e)
+            continue
+        
+        if choice == '1':
+            print(f"{num1} + {num2} = ", add(num1,num2) )
+        elif choice == '2':
+            print(f"{num1} - {num2} = ", sub(num1,num2) )
+        elif choice == '3':
+            print(f"{num1} * {num2} = ", mul(num1,num2))
+        elif choice == '4':
+            print(f"{num1} / {num2} = ", div(num1,num2) )
+        
+        options_yes_no = input("Do you want to continue? Put y/n - ")
+        if options_yes_no == "n":
+            break
+    else:
+        print("Enter valid options")
+        break
+        
+```
 ---
         
         
