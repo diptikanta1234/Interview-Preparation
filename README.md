@@ -231,7 +231,8 @@ continue ->	Skips only the current iteration and continues the loop
 
 
 <img width="1150" height="236" alt="image" src="https://github.com/user-attachments/assets/79e3fb96-2679-4677-85b8-37eccfa78c5b" />
-
+```
+```
 ---
 
 ## Question 6
