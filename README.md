@@ -1,7 +1,7 @@
 # Interview-Preparation
 ======================================
 
-## Question
+## Question 1
 **Q. WAP to display whether a number is a prime number or not.**
 
 ---
@@ -66,7 +66,7 @@ A **prime number** is a number greater than `1` that has only two factors:
 
 ---
 
-## Question
+## Question 2
 **Write a Python program to display the Fibonacci series up to a given number of terms.**
 
 ---
@@ -129,7 +129,7 @@ i=2 --> n1=1,n2=2 nth=1+2=3  updated n1=2, n2=3
 i=3 --> n1=2,n2=3 nth=2+3=5  updated n1=3, n2=5
 i=4 --> n1=3,n2=5 nth=3+5=8  updated n1=5, n2=8
 ```
-## Question
+## Question 3
 **Write a Python program to display the Factorial of a given number.**
 
 ---
