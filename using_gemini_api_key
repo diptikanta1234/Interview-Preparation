@@ -1,0 +1,135 @@
+https://github.com/Sagar2366/ai-assisted-devops-workshop/blob/main/episode-1-ai-foundations/demos/google/task2_system_prompts.py
+
+1.
+cat task1_first_api_call.py 
+import os
+from google import genai
+
+def main():
+    print("=================================================================")
+    print("1st api call...")
+    print("=================================================================")
+    
+    # The client automatically looks for the GEMINI_API_KEY environment variable
+    client = genai.Client()
+
+    print("-----------------------------------------------------------------")
+    print("Experiment1------------------------")
+    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    
+    response1 = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents="What is Kubernetes and what's its use?",
+    )
+    
+    # Print the text response from the model
+    print(response1.text)
+    
+    print("\n" + "="*65)
+    print("TOKEN USAGE METRICS")
+    print("="*65)
+    
+    # Access usage metadata from the response object
+    usage_metadata = response1.usage_metadata
+    
+    print(f"Prompt Tokens:    {usage_metadata.prompt_token_count}")
+    print(f"Response Tokens:  {usage_metadata.candidates_token_count}")
+    print(f"Total Tokens:     {usage_metadata.total_token_count}")
+    print("="*65)
+
+if __name__ == "__main__":
+    main()
+
+
+2. 
+cat api-call-2.py 
+import os
+
+from google import genai
+
+def main():
+
+    print("=================================================================")
+
+    print("1st api call...")
+
+    print("=================================================================")
+
+    
+
+    # The client automatically looks for the GEMINI_API_KEY environment variable
+
+    client = genai.Client()
+
+    print('\n',"-"*65)
+
+    print("Experiment1------------------------")
+
+    print("-"*65)
+    
+    try:
+        response1 = client.models.generate_content(
+
+        model="gemini-2.5-flash",
+
+        contents="What is Kubernetes and what's its use?",
+
+        )
+
+
+        # Print the text response from the model
+    
+        print(response1.text)
+        
+        
+        print("\n", '+', "="*65)
+
+        print("TOKEN USAGE METRICS OF RESPONSE 1")
+    
+        print("="*65)
+        # Access usage metadata from the response object
+
+        usage_metadata = response1.usage_metadata
+    
+        
+        print(f"Prompt Tokens:    {usage_metadata.prompt_token_count}")
+    
+        print(f"Response Tokens:  {usage_metadata.candidates_token_count}")
+    
+        print(f"Total Tokens:     {usage_metadata.total_token_count}")
+    
+        print("="*65)
+        
+    except APIError as e:
+        print("\n[Experiment 1 failed] : overloaded or server error",e)
+        
+    print('/n','+','='*65)
+    print('Experiment 2 : -------------------')
+    print()
+    
+    try:
+        
+        response2 = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents="what is devops, explain in 5 lines",
+            )
+        print(response2.text)
+        
+        print("\n" + "="*65)
+    
+        print("TOKEN USAGE METRICS OF RESPONSE 2")
+    
+        print("="*65)
+        
+        USAGE2=response2.usage_metadata
+        
+        print(f"prompt count: {USAGE2.prompt_token_count}")
+        print(f"Response count: {USAGE2.candidates_token_count}")
+        print(f"Token count: {USAGE2.total_token_count}")
+    except APIError as e2:
+        print(f'\n[Experiment 2 Failed: server error or overloaded: {e2}')
+
+
+if __name__ == "__main__":
+
+    main()
