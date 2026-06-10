@@ -458,6 +458,190 @@ END;
 
 
 
+What is an Index?
+An index is a database object that improves the speed of data retrieval operations on a table.
+Without an index, Oracle may perform a Full Table Scan, reading every row to find matching data.
+
+An index is a schema object that improves query performance by providing faster access to rows. Oracle commonly uses B-Tree indexes for OLTP systems and Bitmap indexes for data warehouses. Indexes reduce read time but add overhead to DML operations because the index must be maintained whenever data changes. We analyze execution plans using EXPLAIN PLAN and DBMS_XPLAN.DISPLAY to verify whether Oracle is using an index effectively.
+
+1. B-Tree Index (Most Common - default index )
+Oracle creates B-Tree indexes by default and arranges data in balanced-tree structure.
+
+Characteristics
+	• Balanced tree structure 
+	• Search, insert, and delete operations are efficient 
+	• Time complexity: approximately O(log n) 
+	• Supports: 
+		○ Equality searches (WHERE id = 100) 
+		○ Range searches (WHERE salary BETWEEN 50000 AND 100000) 
+		○ Sorting (ORDER BY) 
+		○ Prefix matching (LIKE 'ABC%')
+
+CREATE INDEX idx_emp_name
+ON Employees(name);
+
+Best Use Cases
+	• Primary keys 
+	• Foreign keys 
+	• Range queries 
+	• Frequently sorted columns
+	2. Bitmap Index
+	A Bitmap Index uses bit arrays (0s and 1s) to represent the presence of values. Its used for low-cardinality columns.
+	
+	Basically used for Columns with few distinct values:
+		• Gender 
+		• Status (Active/Inactive) 
+		• Yes/No flags
+
+	3. Unique Index
+Ensures no duplicate values exist.
+
+CREATE UNIQUE INDEX idx_email
+ON employees(email);
+	4. Composite (Concatenated) Index
+Created on multiple columns.
+
+CREATE INDEX idx_dept_salary
+ON employees(department, salary);
+
+
+Useful when you use both indexed columns to filter -
+SELECT *
+FROM employees
+WHERE department = 'IT'
+AND salary > 50000;
+	5. Function-Based Index
+Created on an expression or function.
+
+SELECT *
+FROM employees
+WHERE UPPER(emp_name) = 'JOHN';
+
+CREATE INDEX idx_upper_name
+ON employees(UPPER(emp_name));
+
+
+When no indexed colmn is used in query 'select * from emp' ,oracle does full table scan -
+EXPLAIN PLAN FOR
+select * from HR.emp2;
+--where employee_id = 101;
+
+select * from TABLE(Dbms_Xplan.display);
+
+<img width="582" height="576" alt="image" src="https://github.com/user-attachments/assets/3fd7ebe9-704f-44f6-bac8-ec1ab4954eaf" />
+
+
+Below tables user_ind_columns and all_ind_columns are master tables for index.
+SELECT index_name,
+       column_name
+FROM all_ind_columns
+WHERE table_name = 'EMP2'
+  AND table_owner = 'HR';
+
+
+Bind Variables :-
+A bind variable is a placeholder used in SQL statements whose value is supplied at runtime. Bind variables improve performance by reducing hard parsing and enabling execution plan reuse. They also reduce memory usage in the shared pool and help prevent SQL injection when using dynamic SQL. In Oracle, bind variables are commonly used in PL/SQL programs, stored procedures, and EXECUTE IMMEDIATE statements.
+
+Hard Parse
+
+SQL Text
+   ↓
+Syntax Check
+   ↓
+Semantic Check
+   ↓
+Optimizer
+   ↓
+Execution Plan
+
+Soft Parse
+Oracle reuses an existing execution plan.
+Much faster.
+Bind variables help Oracle perform more soft parses.
+
+
+	1. Bind variables used in slql block -
+------------------------
+VARIABLE b_empno NUMBER
+
+EXEC :b_empno := 7369;
+
+SELECT *
+FROM emp
+WHERE empno = :b_empno;
+-----------------------
+
+	2. Bind Variables in Dynamic SQL -
+	declare
+	  v_ename varchar2(15);
+	  v_query varchar2(100);
+	begin
+	  v_query := 'select first_name from HR.emp2 where employee_id= :1';
+	  
+	  EXECUTE IMMEDIATE v_query
+	  INTO v_ename
+	  using 101 ;
+	  dbms_output.put_line(' Employee name : '||v_ename);
+	  
+	END;
+	/
+	
+declare
+  TYPE v_ename is TABLE OF varchar(100);
+  ename v_ename;
+begin
+    
+EXECUTE IMMEDIATE 'select first_name from HR.emp2 
+  where department_id IN ( :1 ,:2)
+  AND salary > :3'
+  BULK COLLECT INTO ename
+  using 10,20,5000;
+  
+  for i in 1 .. ename.count LOOP
+     dbms_output.put_line( 'Employee name : '||ename(i));
+  end loop;
+  
+END;
+/
+
+
+// using 10,20,1000
+                :1  :2    :3
+Interview Tip
+	• EXECUTE IMMEDIATE ... INTO → Single row. 
+	• EXECUTE IMMEDIATE ... BULK COLLECT INTO → Multiple rows.
+
+
+In static SQL inside a PL/SQL procedure, procedure parameters and local variables are automatically treated as bind variables by Oracle. We reference them directly (department_id = v_department_id) without a colon. The : syntax is mainly used in dynamic SQL (EXECUTE IMMEDIATE) and client tools such as SQL*Plus or SQL Developer.
+
+create or replace procedure proc_demo ( v_department_id number, v_salary number)
+is
+  TYPE v_ename is TABLE OF varchar(100);
+  ename v_ename;
+begin
+  select first_name 
+  BULK COLLECT INTO ename
+  from HR.emp2 
+  where department_id = v_department_id
+  AND salary > v_salary;
+ 
+  for i in 1 .. ename.count LOOP
+     dbms_output.put_line( 'Employee name : '||ename(i));
+  end loop;  
+END;
+/
+
+ACID is a set of properties that ensure database transactions are processed reliably and maintain data integrity.
+ACID stands for:
+	• A – Atomicity 
+	• C – Consistency 
+	• I – Isolation 
+	• D – Durability
+
+How to process millions of records effectively -  
+In real projects handling millions of records, we avoid row-by-row processing and use set-based SQL wherever possible. For PL/SQL batch processing, we use BULK COLLECT with LIMIT and FORALL to reduce context switching. For very large datasets, we implement partitioning, parallel processing, and staging tables. We also use MERGE statements for upserts and DBMS_SCHEDULER for batch automation. Additionally, we implement logging and commit in batches to ensure scalability, performance, and recoverability.
+<img width="1127" height="5428" alt="image" src="https://github.com/user-attachments/assets/a0219fb2-8e52-4852-bed6-4e32e34393fb" />
+
 
 
 <img width="1153" height="4277" alt="image" src="https://github.com/user-attachments/assets/90b924f6-ce61-48bd-b429-b8d907dd1b8a" />
