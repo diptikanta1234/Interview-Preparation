@@ -66,3 +66,51 @@ Use the following format to access a secret:
 
 ${{ secrets.SECRET_NAME }}
 ```
+GitHub Actions OIDC Authentication with Azure, Terraform, and Azure Key Vault :: how resource is craeted through terraform by keeping secrets securely and the secrets will not be noted in terraform.statefile
+
+This document explains how GitHub Actions authenticates with Microsoft Azure using OpenID Connect (OIDC) and how Terraform can then retrieve a secret from Azure Key Vault and use it when configuring an Azure Linux VM.
+
+Authentication and Deployment Flow
+Developer
+   │
+   │ git push
+   ▼
+GitHub Repository
+   │
+   │ triggers workflow
+   ▼
+GitHub Actions Runner
+   │
+   │ "I am workflow X from repository Y"
+   │
+   │ 1. GitHub OIDC authentication
+   ▼
+GitHub OIDC Provider
+   │
+   │ Gives GitHub Actions a signed OIDC token (JWT)
+   ▼
+Microsoft Entra ID
+   │
+   │ Validates the OIDC token
+   │ Checks the configured trust rules
+   │
+   │ Issues an Azure access token
+   ▼
+Terraform
+   │
+   │ 2. Requests secret using Azure identity
+   ▼
+Azure Key Vault
+   │
+   │ 3. Returns secret value
+   ▼
+Terraform
+   │
+   │ 4. Sends password/configuration
+   │    to Azure VM API
+   ▼
+Azure Resource Manager
+   │
+   ▼
+Azure Linux VM
+
