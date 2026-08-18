@@ -70,6 +70,7 @@ GitHub Actions OIDC Authentication with Azure, Terraform, and Azure Key Vault ::
 
 This document explains how GitHub Actions authenticates with Microsoft Azure using OpenID Connect (OIDC) and how Terraform can then retrieve a secret from Azure Key Vault and use it when configuring an Azure Linux VM.
 
+```
 Authentication and Deployment Flow
 Developer
    │
@@ -110,6 +111,7 @@ Terraform
    │    to Azure VM API
    ▼
 Azure Resource Manager
+```
    │
    ▼
 Azure Linux VM
