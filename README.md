@@ -72,47 +72,50 @@ This document explains how GitHub Actions authenticates with Microsoft Azure usi
 
 ```
 Authentication and Deployment Flow
+
+
 Developer
    │
    │ git push
    ▼
 GitHub Repository
    │
-   │ triggers workflow
+   │ triggers workflow . 
    ▼
-GitHub Actions Runner
+GitHub Actions Runner ( "I am workflow X from repo Y")=
    │
-   │ "I am workflow X from repository Y"
+   │ 1. github OIDC authentication ( GitHub OIDC Provider Gives GitHub a signed OIDC token(JWT) )
+- uses: azure/login@v2
+  with:
+    client-id: ${{ secrets.AZURE_CLIENT_ID }}
+    tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+client secret -> GitHub gives Entra ID its OIDC token
    │
-   │ 1. GitHub OIDC authentication
    ▼
-GitHub OIDC Provider
+Microsoft Entra ID ( Validates token
+   │    and checks whether it matches
+   │    the configured trust rules )
    │
-   │ Gives GitHub Actions a signed OIDC token (JWT)
-   ▼
-Microsoft Entra ID
-   │
-   │ Validates the OIDC token
-   │ Checks the configured trust rules
-   │
-   │ Issues an Azure access token
+   │ issues Azure access token
    ▼
 Terraform
    │
-   │ 2. Requests secret using Azure identity
+   │ 2. requests secret using Azure identity
    ▼
 Azure Key Vault
    │
-   │ 3. Returns secret value
+   │ 3. returns secret value
    ▼
 Terraform
    │
-   │ 4. Sends password/configuration
-   │    to Azure VM API
+   │ 4. sends password to Azure VM API
    ▼
 Azure Resource Manager
-```
    │
    ▼
 Azure Linux VM
+
+```
+  
 
