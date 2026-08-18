@@ -117,5 +117,18 @@ Azure Resource Manager
 Azure Linux VM
 
 ```
+```
+OIDC ( OpenId Connect) -> 
+•	mainly used for authethentication ( WHO are u).   
+•	Provides an ID Token (commonly a JWT)
+•	Contains identity/claims about the authenticated user or workload
+
+OAuth :-
+•	mainly used for Authorization ("What are you allowed to access?").
+•	Provides an Access Token
+•	Used by a client/application to access an API/resource
+•	Contains information/permissions (scopes, roles, etc.)
+```
   
+<img width="2928" height="2884" alt="image" src="https://github.com/user-attachments/assets/2d20e010-96c6-463a-a331-184e22f08008" />
 
