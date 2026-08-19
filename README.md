@@ -1,21 +1,41 @@
 # Interview-Preparation for Azure
 
 =================================
+<img width="2928" height="2884" alt="image" src="https://github.com/user-attachments/assets/2d20e010-96c6-463a-a331-184e22f08008" />
+
+**PIM** :-
+PIM in azure normally refers to MS entraId Privileged Identity Management .
+It helps organisation to manage, control and monitor resources or users.
+
+NOTE - Instead of giving the full access permanently, give access for limited time. works like STS in aws.
+
+What PIM does
+
+Instead of giving an administrator permanent access:
+```
+Just-in-time (JIT) access — users activate privileged roles only when needed.
+Time-limited access — activated permissions can automatically expire.
+Approval workflows — require someone to approve role activation.
+MFA enforcement — require MFA when activating a privileged role.
+Reason/ticket requirements — users can be required to provide justification or a ticket number.
+Auditing — track who activated which role, when, and why.
+Access reviews — periodically review whether users still need privileged access.
+Example
+
+Without PIM:
+
+Alice → Owner role → Permanent access
+
+With PIM:
+
+Alice → Eligible for Owner → Requests activation → MFA/approval → Owner for 1 hour → Access expires
+
+```
+
+
+
 Subscriptions -
-<img width="575" height="304" alt="image" src="https://github.com/user-attachments/assets/37cb102d-7e7c-4e3b-b897-e827bec27e89" />
 
-<img width="538" height="266" alt="image" src="https://github.com/user-attachments/assets/b69df973-aaf9-47d2-af63-854dccc599f6" />
-
-<img width="554" height="297" alt="image" src="https://github.com/user-attachments/assets/c5b05c41-3727-405b-8334-1d275508645e" />
-<img width="566" height="297" alt="image" src="https://github.com/user-attachments/assets/b4f0faf5-6112-4fcc-9d97-6479b71ee430" />
-
-<img width="563" height="294" alt="image" src="https://github.com/user-attachments/assets/ad6d638d-91c3-451f-88c2-984a8c5fe39b" />
-<img width="560" height="295" alt="image" src="https://github.com/user-attachments/assets/f4390166-3f43-45e2-8935-73002b66fe0a" />
-<img width="566" height="359" alt="image" src="https://github.com/user-attachments/assets/66953c9e-4469-4716-ba38-cd47404e2276" />
-<img width="1538" height="810" alt="image" src="https://github.com/user-attachments/assets/e1404803-eee2-4487-8194-a187d7eeb36e" />
-<img width="1571" height="913" alt="image" src="https://github.com/user-attachments/assets/aadd055d-1cda-4e13-ad92-f7c2f6889787" />
-<img width="1257" height="928" alt="image" src="https://github.com/user-attachments/assets/60915379-b9ce-4da9-a052-26452ec92381" />
-<img width="1672" height="959" alt="image" src="https://github.com/user-attachments/assets/9d97502e-2a6b-49b6-86bc-7e1471532991" />
 
 we can use 'Cost management' to check bills or invoice.
 
@@ -97,12 +117,4 @@ Aws user data is similar to azure custom data.
 Azure user data is completely different.
 
 Lets say we are creating a vm/ec2 through cli or ui or IAC, we need some dependency or application code to be installed during the creation of vm. So we are keeping those in custom data in azure (aws -> user data) as script.
-
-<img width="809" height="338" alt="image" src="https://github.com/user-attachments/assets/f7aff3b4-3b9b-4729-a5f8-a10f795bba12" />
-<img width="940" height="391" alt="image" src="https://github.com/user-attachments/assets/63f8830a-4d84-4421-a926-265526e61fc3" />
-<img width="940" height="533" alt="image" src="https://github.com/user-attachments/assets/1cafb120-c17c-49f0-adae-052662421eb1" />
-<img width="940" height="585" alt="image" src="https://github.com/user-attachments/assets/5dd42396-18e1-4ed2-a6f3-18dae25a8343" />
-<img width="940" height="315" alt="image" src="https://github.com/user-attachments/assets/a64abe23-7044-4fea-8a08-121af1d8ac69" />
-<img width="940" height="553" alt="image" src="https://github.com/user-attachments/assets/cf7a11fe-cd25-4dad-aa74-2fefe3b2c1a5" />
-
 
