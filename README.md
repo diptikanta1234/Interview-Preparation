@@ -18,7 +18,7 @@
 
 ## Q. how to set terraform remote in your project? Why do u store it in remote?
 We are using azure centralized azure storage account. our terraform.ststefile gets stored inside blob container inside the storage account
-
+```
 Benefits
 Centralized state — everyone uses the same terraform.state file across our project.
 State locking — prevents two Terraform operations from modifying state simultaneously.
@@ -31,7 +31,7 @@ there will be no state files for child modules...its the frame that is stored in
 To design the landing zone for different requirement, we start calling the child resources -> once applied the states are stored in terraform.state file in different storage account
 Landingzone_app_vss -> statefile in azure storage account storagevss2026
 Landingzone_app_IM -> statefile in azure storage account storageIM2026 
-
+```
 in backend.tf -
 ```
 #C:\Users\admin\Desktop\azureClass\azureTerraformPrograms\practice19thAug\environment\dev\terraform.tfstate.backup
@@ -98,8 +98,92 @@ Option C - Azure Backup or other storage backup. we can take the backup of stora
 
 As our version is enabled, after the statefile is deleted we will check the different versions available and will check the appropriate versionId to 'Make current version'.
 <img width="1879" height="912" alt="image" src="https://github.com/user-attachments/assets/4a66d840-f3b6-4ee7-b245-1c9bb5cd0051" />
+### Q. what is "lifecycle" block in terraform?
+Lifecycle block is a meta-argument in terraform which is used to control the creation, modification and deletion of resources.
+Types -
+```
+-> create_before_destroy - creates a resource with same configuration before destroying it. Normally used to reduce downtime ( for any configuration changes to be reflected)
+-> prevent_destroy - Used for critical resources to prevent deletion.( e.g -prod DB, vault, storage, vm etc)
+-> ignore_changes - tells terraform to ignore the change of specific attributes (e.g- tags)
+-> replace_triggered_by - replace the resource based on dependent resource/attribute changes.
 
-### Way 2 — CI/CD Pipeline Secrets (GitHub Actions / Jenkins)
+1. create_before_destroy
+
+It tells Terraform to create the replacement resource before destroying the existing resource.
+
+resource "azurerm_network_security_group" "example" {
+  name                = "example-nsg"
+  location            = "East US"
+  resource_group_name = "example-rg"
+
+  tags = {
+  Environment = "prod"
+}
+
+
+  lifecycle {
+    create_before_destroy = true
+    # prevent_destroy = true
+  }
+
+/*
+#ignore_changes lifecycle
+lifecycle {
+    ignore_changes = [
+      tags
+    ]
+*/
+
+}
+
+Azure interview example:
+
+Suppose an Azure resource requires replacement because of a configuration change. Normally Terraform may destroy the old resource first and then create the new one.
+
+4. replace_triggered_by -
+
+resource "azurerm_linux_virtual_machine" "app" {
+  name                = "app-vm"
+  resource_group_name = azurerm_resource_group.example.name
+  location            = azurerm_resource_group.example.location
+
+  lifecycle {
+    replace_triggered_by = [
+      azurerm_network_interface.app
+    ]
+  }
+}
+```
+### Q. What are meta-arguments in terraform?
+
+Meta-arguments are special arguments that terraform controls to manage resources.
+```
+for example -
+location, name -> are the arguments - defined by azure resources.
+count, for_each, depends_on, lifecycle, provider -> meta-arguments -controls how terraform manages resources
+
+count	-> Create multiple resource instances using indexes.[0], [1]
+         Good for identical resources
+
+         resource "azurerm_resource_group" "example" {
+           count    = 5
+           name     = "my-rg-${count.index}"
+           location = "East US"
+       }
+
+for_each	-> Create multiple instances using keys.["dev"], ["prod"]
+          Good for resources with different values
+```
+### Q. terraform --replace command vs create_before_destroy
+```
+terraform apply -replace = replace a resource for this particular Terraform run.
+terraform apply -replace="azurerm_linux_virtual_machine.example"
+
+create_before_destroy = change the replacement strategy for the resource whenever replacement is required
+This is configured in the Terraform code.
+
+```
+### Q. CI/CD Pipeline Secrets (GitHub Actions / Jenkins) how do you store?
 
 Store credentials as encrypted secrets in your CI platform, then inject them as environment variables at pipeline runtime. You can store these in AWS KMS or Vault, then use them as environment variables in the pipeline.
 
