@@ -65,6 +65,39 @@ terraform force-unlock <lockId>
 terraform force-unlock b04622b8-c4a1-6a39-341c-b5319fc104b7
 <img width="1121" height="587" alt="image" src="https://github.com/user-attachments/assets/f632274e-71ce-4b4e-a316-7e6ea4ccc811" />
 
+## Q. How will recover Terraform state file if its crashed/deleted ? 
+First of all don't run terraform apply command when state file is deleted. it may create duplicate resources.
+
+If your Terraform state file (terraform.tfstate) in an Azure Blob Storage backend is deleted, recovery depends primarily on what data-protection features were enabled on the Storage Account.
+
+<img width="763" height="443" alt="image" src="https://github.com/user-attachments/assets/08749265-7d95-4d65-8450-34dc084ee6fc" />
+
+Recovery options
+Option A — Blob soft delete is enabled
+
+This is the easiest recovery path. Azure Blob soft delete keeps deleted blobs for a configured retention period, up to 365 days.
+<img width="1869" height="544" alt="image" src="https://github.com/user-attachments/assets/1c96dd9f-ec8f-40da-a582-fe24a27c3220" />
+
+In the Azure Portal: Open the Storage Account -> Containers -> Open the container containing your Terraform state -> Enable Show deleted blobs -> Find the deleted terraform.tfstate -> Select it -> Choose Undelete.
+
+After restoring it, verify that Terraform can see the state:
+terraform init
+terraform state list . You should see your existing resources.
+
+Option B — Blob versioning is enabled
+
+enable Blob Versioning, Azure maintains previous versions of the blob. When the current blob is deleted, the previous version can remain available.
+
+Storage Account → Container → terraform.tfstate → Versions
+
+Find the most recent good version and make it the current version.
+
+Be careful here: with versioning enabled, simply undeleting the blob does not necessarily recreate the current blob. Microsoft recommends promoting/copying the desired previous version to become the current version.
+<img width="927" height="314" alt="image" src="https://github.com/user-attachments/assets/f27d3d12-2029-462a-9515-6a6790a28df8" />
+Option C - Azure Backup or other storage backup. we can take the backup of storage with GRS or ZRS
+
+As our version is enabled, after the statefile is deleted we will check the different versions available and will check the appropriate versionId to 'Make current version'.
+<img width="1879" height="912" alt="image" src="https://github.com/user-attachments/assets/4a66d840-f3b6-4ee7-b245-1c9bb5cd0051" />
 
 ### Way 2 — CI/CD Pipeline Secrets (GitHub Actions / Jenkins)
 
@@ -133,9 +166,7 @@ module "network" {
 ![Module sources diagram](https://github.com/user-attachments/assets/a2576188-68ee-4d10-a941-7aa8ac5c6be7)
 <img width="1191" height="167" alt="image" src="https://github.com/user-attachments/assets/013eb675-9fa7-4e11-99a6-d76fdab2c1c8" />
 
-## Q. How will you set up a Terraform state file in a backend? How does DynamoDB come into picture?
 
-> *(Answer to be added)*
 
 ---
 
