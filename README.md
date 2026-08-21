@@ -16,6 +16,143 @@
 ---
 <img width="725" height="375" alt="image" src="https://github.com/user-attachments/assets/834f4005-5b9c-49e4-9496-a414c9f46a7d" />
 
+## Q. how to set terraform remote in your project? Why do u store it in remote?
+We are using azure centralized azure storage account. our terraform.ststefile gets stored inside blob container inside the storage account
+
+Benefits
+Centralized state — everyone uses the same terraform.state file across our project.
+State locking — prevents two Terraform operations from modifying state simultaneously.
+Team collaboration — developers and CI/CD can work with the same infrastructure.
+Security — access can be controlled using Azure RBAC/Entra ID.
+Durability/recovery — Azure Storage can provide versioning/soft-delete protections.
+CI/CD friendly — pipelines don't need to maintain a local state file.
+
+there will be no state files for child modules...its the frame that is stored in gihub in our org.
+To design the landing zone for different requirement, we start calling the child resources -> once applied the states are stored in terraform.state file in different storage account
+Landingzone_app_vss -> statefile in azure storage account storagevss2026
+Landingzone_app_IM -> statefile in azure storage account storageIM2026 
+
+in backend.tf -
+```
+#C:\Users\admin\Desktop\azureClass\azureTerraformPrograms\practice19thAug\environment\dev\terraform.tfstate.backup
+
+terraform {
+  backend "azurerm"{
+    resource_group_name="example-resources"
+    storage_account_name="remotestorage9999"
+    container_name = "storagetfstatecont"
+    key = "dev/terraform.tfstate"
+  }
+}
+```
+then do terraform init -> it will move the contents inside local.statefile to remote dev/terraform.tfstate
+State locking features available automatically in remote statefile.
+
+## Q. Lets say two developer are doing terraform plan at a time, your state file is in remote azure storage account, what will happen?
+terraform starts acquiring lock for one session for developer-A, and do terraform plan by locking that session. it hold the lock until completion.
+
+During that time it will give error to developer-B "Error: Error acquiring the state lock"( Error message: state blob is already locked )
+State lock happens for both terraform plan and apply.
+
+once  developer-A completes then developer-B will try again terraform plan to have it successful.
+developer-A session:
+<img width="979" height="218" alt="image" src="https://github.com/user-attachments/assets/c0b4a2eb-d13e-47f3-9bbf-61ae17125587" />
+developer-B session:
+<img width="1550" height="341" alt="image" src="https://github.com/user-attachments/assets/05bd06a8-e0ad-42fe-932a-10b2588efab0" />
+
+## Q. How can you unlock a state lock ?
+terraform force-unlock <lockId>
+terraform force-unlock b04622b8-c4a1-6a39-341c-b5319fc104b7
+<img width="1121" height="587" alt="image" src="https://github.com/user-attachments/assets/f632274e-71ce-4b4e-a316-7e6ea4ccc811" />
+
+
+### Way 2 — CI/CD Pipeline Secrets (GitHub Actions / Jenkins)
+
+Store credentials as encrypted secrets in your CI platform, then inject them as environment variables at pipeline runtime. You can store these in AWS KMS or Vault, then use them as environment variables in the pipeline.
+
+**GitHub → Repo → Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret Name | Value |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | your access key |
+| `AWS_SECRET_ACCESS_KEY` | your secret key |
+| `AWS_DEFAULT_REGION` | e.g. `ap-south-1` |
+
+![GitHub Secrets Setup](https://github.com/user-attachments/assets/d64ad8de-4113-47f9-9a37-15f60292b1c1)
+
+Then reference them in your workflow file or Jenkinsfile:
+
+```yaml
+# .github/workflows/terraform.yml
+name: Terraform Apply
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION:    ${{ secrets.AWS_DEFAULT_REGION }}
+
+    steps:
+      - uses: actions/checkout@v4
+```
+### Understanding `//` and `?ref=`
+
+```
+github.com/your-org/terraform-vss-module//ec2?ref=main
+│                                        │    │    │
+│                                        │    │    └── branch name (main)
+│                                        │    └─────── subfolder inside repo (ec2/)
+│                                        └──────────── double slash separates repo from subfolder
+└───────────────────────────────────────────────────── GitHub repo path
+```
+
+> **Recommended for production** — use a tag instead of branch:
+>
+> ```bash
+> git tag v1.0.0
+> git push origin v1.0.0
+> ```
+## Q. In how many ways can a Terraform module be stored remotely and imported into other projects?
+
+```
+module "network" {
+  source = "git::https://github.com/company/terraform-modules.git//network?ref=v1.0.0"
+}
+```
+| Source | Example |
+|---|---|
+| GitHub / GitLab / Bitbucket | `github.com/your-org/terraform-modules//ec2?ref=v1.0.0` |
+| Terraform Private Registry | Terraform Cloud / Enterprise |
+
+![Module sources diagram](https://github.com/user-attachments/assets/a2576188-68ee-4d10-a941-7aa8ac5c6be7)
+<img width="1191" height="167" alt="image" src="https://github.com/user-attachments/assets/013eb675-9fa7-4e11-99a6-d76fdab2c1c8" />
+
+## Q. How will you set up a Terraform state file in a backend? How does DynamoDB come into picture?
+
+> *(Answer to be added)*
+
+---
+
+## Q. What is a dynamic block in Terraform?
+## Q. lets say i am creating 3 ec2 instance with same type having count=3 using below code. Now i want to delete a specific instance. How can we do it in Terraform?
+## Q. I have an EC2 created in AWS Console (not via Terraform). How do I bring it into IaC?
+
+
+
+**######################  AWS  ########################**
+## Q. I created 3 EC2 instances and 1 S3 bucket. EC2-3 has an invalid AMI ID and fails. Will the other resources still be created?
+
+**Yes.** Terraform does NOT stop when EC2-3 fails. It continues creating other independent resources and shows a partial success summary at the end.
+
+![Partial success output](https://github.com/user-attachments/assets/6d00a1d5-3101-4089-a353-147b913ea4fe)
+
+
 ## Q. How do you manage credentials when creating an EC2 in a QA account using `terraform apply`?
 
 Go to the account/IAM user → Credentials → Generate secret key → Use CLI → Download the key.
@@ -55,41 +192,7 @@ provider "aws" {
 
 ---
 
-### Way 2 — CI/CD Pipeline Secrets (GitHub Actions / Jenkins)
 
-Store credentials as encrypted secrets in your CI platform, then inject them as environment variables at pipeline runtime. You can store these in AWS KMS or Vault, then use them as environment variables in the pipeline.
-
-**GitHub → Repo → Settings → Secrets and variables → Actions → New repository secret**
-
-| Secret Name | Value |
-|---|---|
-| `AWS_ACCESS_KEY_ID` | your access key |
-| `AWS_SECRET_ACCESS_KEY` | your secret key |
-| `AWS_DEFAULT_REGION` | e.g. `ap-south-1` |
-
-![GitHub Secrets Setup](https://github.com/user-attachments/assets/d64ad8de-4113-47f9-9a37-15f60292b1c1)
-
-Then reference them in your workflow file or Jenkinsfile:
-
-```yaml
-# .github/workflows/terraform.yml
-name: Terraform Apply
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  terraform:
-    runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION:    ${{ secrets.AWS_DEFAULT_REGION }}
-
-    steps:
-      - uses: actions/checkout@v4
-```
 
 ---
 
@@ -131,25 +234,9 @@ When you run `terraform apply`, the AWS SDK calls `sts:AssumeRole`, gets tempora
 
 ---
 
-## Q. I created 3 EC2 instances and 1 S3 bucket. EC2-3 has an invalid AMI ID and fails. Will the other resources still be created?
-
-**Yes.** Terraform does NOT stop when EC2-3 fails. It continues creating other independent resources and shows a partial success summary at the end.
-
-![Partial success output](https://github.com/user-attachments/assets/6d00a1d5-3101-4089-a353-147b913ea4fe)
 
 ---
 
-## Q. In how many ways can a Terraform module be stored remotely and imported into other projects?
-
-| Source | Example |
-|---|---|
-| GitHub / GitLab / Bitbucket | `github.com/your-org/terraform-modules//ec2?ref=v1.0.0` |
-| S3 Bucket | `s3::https://s3.amazonaws.com/mybucket/modules/ec2.zip` |
-| Terraform Private Registry | Terraform Cloud / Enterprise |
-| Terraform Public Registry | `registry.terraform.io/modules/...` |
-
-![Module sources diagram](https://github.com/user-attachments/assets/a2576188-68ee-4d10-a941-7aa8ac5c6be7)
-<img width="1191" height="167" alt="image" src="https://github.com/user-attachments/assets/013eb675-9fa7-4e11-99a6-d76fdab2c1c8" />
 
 **Using modules from GitHub in `project-a/main.tf`:**
 
@@ -324,23 +411,6 @@ terraform apply
 
 ---
 
-### Understanding `//` and `?ref=`
-
-```
-github.com/your-org/terraform-vss-module//ec2?ref=main
-│                                        │    │    │
-│                                        │    │    └── branch name (main)
-│                                        │    └─────── subfolder inside repo (ec2/)
-│                                        └──────────── double slash separates repo from subfolder
-└───────────────────────────────────────────────────── GitHub repo path
-```
-
-> **Recommended for production** — use a tag instead of branch:
->
-> ```bash
-> git tag v1.0.0
-> git push origin v1.0.0
-> ```
 >
 > ```hcl
 > module "my_ec2_instance" {
@@ -440,12 +510,5 @@ terraform plan output:
 
 ---
 
-## Q. How will you set up a Terraform state file in a backend? How does DynamoDB come into picture?
-
-> *(Answer to be added)*
-
----
-
-## Q. What is a dynamic block in Terraform?
 
 > *(Answer to be added)*
