@@ -132,3 +132,283 @@ OAuth :-
   
 <img width="2928" height="2884" alt="image" src="https://github.com/user-attachments/assets/2d20e010-96c6-463a-a331-184e22f08008" />
 
+
+## Build and deploy flask application. now deploy it using ci(build code, test, build image, tag the version, push to ACR) and cd ( deploy to aks ) pipeline using github action by creating a self hosted agent. in ci write multistage docker file to build. now write the aks/k8s yaml and install those through helm...once done install prometheus and grafana to check the health of cluster/node/pod.
+
+app.py
+```
+import os
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return jsonify({"status": "healthy", "message": "Flask App running on AKS!"})
+
+@app.route('/health')
+def health():
+    return jsonify({"status": "UP"}), 200
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
+```
+test_app.py
+
+```
+import pytest
+from app import app
+
+@pytest.fixture
+def client():
+    app.config['TESTING'] = True
+    with app.test_client() as client:
+        yield client
+
+def test_home(client):
+    rv = client.get('/')
+    assert rv.status_code == 200
+    assert b"Flask App running on AKS!" in rv.data
+
+def test_health(client):
+    rv = client.get('/health')
+    assert rv.status_code == 200
+    assert b"UP" in rv.data
+```
+
+```
+# Stage 1: Build stage
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: Runtime stage
+FROM python:3.11-slim AS runner
+
+WORKDIR /app
+
+COPY --from=builder /opt/venv /opt/venv
+COPY app.py .
+
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PORT=5000
+
+# Non-root user for security
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]
+```
+3. Helm Chart Structure
+Create a directory charts/flask-app with the following files:
+
+charts/flask-app/Chart.yaml
+```
+apiVersion: v2
+name: flask-app
+description: A Helm chart for deploying Flask application on AKS
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+```
+charts/flask-app/values.yaml
+```
+replicaCount: 2
+
+image:
+  repository: myacr.azurecr.io/flask-app
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 5000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 5000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+```
+charts/flask-app/templates/deployment.yaml
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "flask-app.fullname" . }}
+  labels:
+    app: {{ include "flask-app.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "flask-app.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "flask-app.name" . }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+```
+charts/flask-app/templates/service.yaml
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "flask-app.fullname" . }}
+  labels:
+    app: {{ include "flask-app.name" . }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "flask-app.name" . }}
+```
+charts/flask-app/templates/_helpers.tpl
+```
+{{- define "flask-app.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "flask-app.fullname" -}}
+{{- if .Values.fullnameOverride -}}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+```
+
+4. GitHub Actions CI/CD Pipeline (.github/workflows/deploy.yml)
+Set up secrets in GitHub repository: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, ACR_NAME, RESOURCE_GROUP, AKS_CLUSTER_NAME.
+```
+name: CI/CD Pipeline to AKS
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  ci-cd:
+    runs-on: self-hosted # Running on your Self-Hosted Runner
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies & Run Tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+          pytest test_app.py
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build, Tag, and Push Image to ACR
+        run: |
+          ACR_NAME=${{ secrets.ACR_NAME }}
+          IMAGE_TAG=${{ github.sha }}
+
+          az acr login --name $ACR_NAME
+
+          docker build -t $ACR_NAME.azurecr.io/flask-app:$IMAGE_TAG -t $ACR_NAME.azurecr.io/flask-app:latest .
+          docker push $ACR_NAME.azurecr.io/flask-app:$IMAGE_TAG
+          docker push $ACR_NAME.azurecr.io/flask-app:latest
+
+      - name: Set AKS Context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ secrets.RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+
+      - name: Deploy via Helm
+        run: |
+          ACR_NAME=${{ secrets.ACR_NAME }}
+          IMAGE_TAG=${{ github.sha }}
+
+          helm upgrade --install flask-release ./charts/flask-app \
+            --namespace default \
+            --set image.repository=$ACR_NAME.azurecr.io/flask-app \
+            --set image.tag=$IMAGE_TAG
+```
+
+Prometheus & Grafana Setup on AKSTo monitor the health of your nodes, clusters, and pods, install the kube-prometheus-stack via Helm from your self-hosted runner or local terminal logged into AKS:Bash
+```
+# 1. Add Prometheus Helm repository
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+# 2. Create namespace for monitoring
+kubectl create namespace monitoring
+
+# 3. Install kube-prometheus-stack (includes Prometheus, Grafana, Node Exporter, Kube State Metrics)
+helm install prometheus-stack prometheus-community/kube-prometheus-stack \
+  --namespace monitoring
+
+# 4. Get Grafana 'admin' password
+kubectl get secret --namespace monitoring prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 --decode; echo
+
+# 5. Access Grafana Dashboard locally via Port-Forwarding
+kubectl port-forward service/prometheus-stack-grafana 8080:80 -n monitoring
+```
+Open http://localhost:8080 in your browser:Username: adminPassword: (Retrieved from step 4)Out of the box, kube-prometheus-stack auto-configures pre-built Grafana dashboards for:Kubernetes / Compute Resources / ClusterKubernetes / Compute Resources / Node (Pods)Kubernetes / Compute Resources / Workload
