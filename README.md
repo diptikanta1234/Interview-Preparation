@@ -209,6 +209,25 @@ EXPOSE 5000
 
 CMD ["python", "app.py"]
 ```
+What is requirements.txt? why we use this?
+
+requirements.txt - It contains different library, versions, dependencies that is required to run the application.
+We use 'pip install -r requirment.txt' to install these list of dependencies with same version defined in this file.
+
+-> Who gives or creates this file?
+the developer create and maintain this file.When building a Python project locally, you install libraries using pip. Once your application works, you generate this file so other developers, CI/CD pipelines, and Docker containers know exactly what to install.
+You typically generate it automatically from your local virtual environment by running:
+```
+pip freeze > requirements.txt
+```
+inside this file we have -
+```
+flask == 3.0.2
+pytest == 8.0.0
+gunicorn==21.2.0
+requests>=2.31.0
+psycopg2-binary==2.9.9
+```
 3. Helm Chart Structure
 Create a directory charts/flask-app with the following files:
 
