@@ -228,6 +228,22 @@ gunicorn==21.2.0
 requests>=2.31.0
 psycopg2-binary==2.9.9
 ```
+Helm:-
+It is a kubernetes package manager like ( apt, yum, apt etc). Instead of using 'kubectl apply -f '
+, we can use helm commands to install and apply.
+
+supose we want to manage some different attributes based on environments ( like 2 replicas for dev, 3 for preprod, 5 for prod), we can define different values.yaml ( eg- value_dev.yaml etc) to achieve it.
+
+Chart Directory Structure
+```
+charts/flask-app/
+├── Chart.yaml
+├── values.yaml
+└── templates/
+    ├── deployment.yaml
+    ├── service.yaml
+    └── ingress.yaml
+```
 3. Helm Chart Structure
 Create a directory charts/flask-app with the following files:
 
@@ -246,17 +262,19 @@ replicaCount: 2
 
 image:
   repository: myacr.azurecr.io/flask-app
-  pullPolicy: IfNotPresent
   tag: "latest"
-
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+  pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
   port: 80
   targetPort: 5000
+
+ingress:
+  enabled: true
+  host: flask.yourdomain.com
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: flask-app-tls-secret
 
 resources:
   limits:
@@ -265,38 +283,24 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
-
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 5000
-  initialDelaySeconds: 5
-  periodSeconds: 10
-
-readinessProbe:
-  httpGet:
-    path: /health
-    port: 5000
-  initialDelaySeconds: 5
-  periodSeconds: 10
 ```
 charts/flask-app/templates/deployment.yaml
 ```
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "flask-app.fullname" . }}
+  name: {{ .Release.Name }}-{{ .Chart.Name }}
   labels:
-    app: {{ include "flask-app.name" . }}
+    app: {{ .Chart.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "flask-app.name" . }}
+      app: {{ .Chart.Name }}
   template:
     metadata:
       labels:
-        app: {{ include "flask-app.name" . }}
+        app: {{ .Chart.Name }}
     spec:
       containers:
         - name: {{ .Chart.Name }}
@@ -307,18 +311,26 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
+            httpGet:
+              path: /health
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
           readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
+            httpGet:
+              path: /health
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
 ```
 charts/flask-app/templates/service.yaml
 ```
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "flask-app.fullname" . }}
+  name: {{ .Release.Name }}-{{ .Chart.Name }}
   labels:
-    app: {{ include "flask-app.name" . }}
+    app: {{ .Chart.Name }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -327,22 +339,37 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: {{ include "flask-app.name" . }}
+    app: {{ .Chart.Name }}
 ```
-charts/flask-app/templates/_helpers.tpl
+templates/ingress.yaml
 ```
-{{- define "flask-app.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-
-{{- define "flask-app.fullname" -}}
-{{- if .Values.fullnameOverride -}}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-{{- end -}}
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer | quote }}
+    kubernetes.io/ingress.class: nginx
+spec:
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-{{ .Chart.Name }}
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}
 ```
 
 4. GitHub Actions CI/CD Pipeline (.github/workflows/deploy.yml)
