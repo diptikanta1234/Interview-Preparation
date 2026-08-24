@@ -183,6 +183,17 @@ create_before_destroy = change the replacement strategy for the resource wheneve
 This is configured in the Terraform code.
 
 ```
+### Q.  if-else condition? 
+ if-els is usually implemented using the conditional expression:
+```
+condition ? value_if_true : value_if_false
+
+e.g - create a vm if env is prod otherwise don't create.
+count = var.environment == "prod" ? 1 : 0
+
+vm_size = var.environment == "prod" ? "Standard_D2s_v5" : "Standard_B1s"
+
+```
 ### Q. CI/CD Pipeline Secrets (GitHub Actions / Jenkins) how do you store?
 
 Store credentials as encrypted secrets in your CI platform, then inject them as environment variables at pipeline runtime. You can store these in AWS KMS or Vault, then use them as environment variables in the pipeline.
