@@ -15,7 +15,9 @@
 
 ---
 <img width="725" height="375" alt="image" src="https://github.com/user-attachments/assets/834f4005-5b9c-49e4-9496-a414c9f46a7d" />
-## Q. What errors and critical issue have you faced in terraform? explain
+
+## Q. What errors and critical issue have you faced in terraform? explain it
+
 ```
 In Terraform with Azure, I have faced several challenges, mainly around state management, resource dependencies, existing resources, Azure policy restrictions, and quota or SKU-related issues.
 
@@ -27,8 +29,9 @@ I also faced** Azure-side deployment errors - 403**. For example, while creating
 
 I have also encountered quota and SKU availability issues. For example, VM creation failed because the subscription had insufficient regional vCPU quota or the selected VM SKU wasn't available in that region. I verified the SKU availability and quota and either requested a quota increase or selected an appropriate SKU/region.
 
-So the main approach I follow is: first determine whether the problem is Terraform configuration, Terraform state, provider/API, or an Azure platform restriction, then troubleshoot accordingly.”
+So the main approach I follow is: first determine whether the problem is Terraform configuration, Terraform state, provider/API, or an Azure platform restriction, then troubleshoot accordingly.
 ```
+
 ## Q. how to set terraform remote in your project? Why do u store it in remote?
 We are using azure centralized azure storage account. our terraform.ststefile gets stored inside blob container inside the storage account
 ```
