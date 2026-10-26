@@ -1,3 +1,96 @@
+**Terraform plan output validator
+Checks Terraform plan output, Before applying Terraform changes in Azure, the team wants to identify resources that will be created, updated, deleted, or replaced.
+Create a file named terraform_check.py.
+Skills: Python, JSON, Terraform, CI/CD **
+```
+import json
+import sys
+
+with open("tfplan.json", "r") as file:
+    plan = json.load(file)
+
+changes = plan.get("resource_changes", [])
+
+create = 0
+update = 0
+delete = 0
+replace = 0
+
+for resource in changes:
+    actions = resource["change"]["actions"]
+    name = resource["address"]
+
+    if actions == ["create"]:
+        create += 1
+    elif actions == ["update"]:
+        update += 1
+    elif actions == ["delete"]:
+        delete += 1
+    elif "delete" in actions and "create" in actions:
+        replace += 1
+
+    print(f"{name}: {actions}")
+
+print("\nTerraform Plan Summary")
+print("Resources to create:", create)
+print("Resources to update:", update)
+print("Resources to delete:", delete)
+print("Resources to replace:", replace)
+
+if delete > 0 or replace > 0:
+    print("WARNING: Review destructive changes before deployment.")
+    sys.exit(1)
+
+print("Plan check completed.")
+```
+
+**Q.use Python to automate Azure resource inventory reporting. The script calls Azure CLI, retrieves resource information in JSON format, and exports resource names, types, resource groups and locations to CSV. This reduces manual effort during infrastructure reviews and audit preparation.
+az login
+az account set --subscription "<subscription-id>"
+python azure_inventory.py
+**
+```
+import subprocess
+import json
+import csv
+
+command = [
+    "az", "resource", "list",
+    "--output", "json"
+]
+
+result = subprocess.run(
+    command,
+    capture_output=True,
+    text=True,
+    check=True
+)
+
+resources = json.loads(result.stdout)
+
+with open("azure_inventory.csv", "w", newline="") as file:
+    writer = csv.writer(file)
+
+    writer.writerow([
+        "Resource Name",
+        "Resource Type",
+        "Resource Group",
+        "Location"
+    ])
+
+    for resource in resources:
+        writer.writerow([
+            resource.get("name", ""),
+            resource.get("type", ""),
+            resource.get("resourceGroup", ""),
+            resource.get("location", "")
+        ])
+
+print(f"Inventory report created: {len(resources)} resources")
+
+```
+
+
 # Interview-Preparation
 ======================================
 
