@@ -152,20 +152,30 @@ lifecycle {
 
 }
 
-Azure interview example:
+replace_triggered_by :
+-------------------------
+Real-world scenario : Azure VM + NIC
+Suppose tumne Azure mein ek VM create kiya hai aur uske saath ek Network Interface Card (NIC) attached hai.
+Requirement: Jab bhi NIC replace ho, VM bhi automatically replace hona chahiye.
 
-Suppose an Azure resource requires replacement because of a configuration change. Normally Terraform may destroy the old resource first and then create the new one.
+resource "azurerm_network_interface" "nic" {......}
 
-4. replace_triggered_by -
-
-resource "azurerm_linux_virtual_machine" "app" {
+resource "azurerm_linux_virtual_machine" "vm" {
   name                = "app-vm"
-  resource_group_name = azurerm_resource_group.example.name
-  location            = azurerm_resource_group.example.location
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  size                = "Standard_B2s"
+
+  admin_username = "azureuser"
+  network_interface_ids = [
+    azurerm_network_interface.nic.id
+  ]
+
+  # Other required VM settings omitted
 
   lifecycle {
     replace_triggered_by = [
-      azurerm_network_interface.app
+      azurerm_network_interface.nic
     ]
   }
 }
